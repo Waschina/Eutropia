@@ -32,7 +32,7 @@ setMethod(f          = "run.simulation",
             fork_hexVol       <- object@environ@hexVol
             fork_envCompounds <- object@environ@compounds
             cl <- makeCluster(n.cores)
-            clusterExport(cl, c("fork_models","fork_deltaTime", "fork_hexVol", "fork_envCompounds","ok"), envir = environment())
+            #clusterExport(cl, c("fork_models","fork_deltaTime", "fork_hexVol", "fork_envCompounds","ok"), envir = environment())
             fork_ids <- clusterApply(cl, 1:n.cores, function(x){
               require(EcoAgents)
               SYBIL_SETTINGS("SOLVER","cplexAPI")
@@ -40,8 +40,8 @@ setMethod(f          = "run.simulation",
               fork_mods <<- list()
               for(mi in names(fork_models)) {
                 fork_mods[[mi]] <<- sysBiolAlg(fork_models[[mi]]@mod,
-                                                      algorithm = "mtf2",
-                                                      pFBAcoeff = 1e-6)
+                                               algorithm = "mtf2",
+                                               pFBAcoeff = 1e-6)
               }
 
 
@@ -86,13 +86,13 @@ setMethod(f          = "run.simulation",
                 unlist(lapply(ctype, function(x) object@models[[x]]@scavengeDist))
               }
               cellDT[, tmp_scv_radius := get_scv_radius(type)]
-              clusterExport(cl, c("cellDT","gridDT"), envir = environment())
+              #clusterExport(cl, c("gridDT"), envir = environment())
 
-              cellHexEnv <- parRapply(cl, cellDT[,.(x, y, size, tmp_scv_radius)], function(cDT) {
-                icell_x    <- cDT['x']
-                icell_y    <- cDT['y']
-                icell_size <- cDT['size']
-                scv_dist   <- cDT['tmp_scv_radius']
+              get_cellHexEnv <- function(cDT) {
+                icell_x    <- cDT[1]
+                icell_y    <- cDT[2]
+                icell_size <- cDT[3]
+                scv_dist   <- cDT[4]
 
                 # pre-filter grid hexagons
                 gtmp <- gridDT[abs(x - icell_x) <= (icell_size/2 + scv_dist) &
@@ -114,7 +114,10 @@ setMethod(f          = "run.simulation",
                 return(data.table(hex.id   = gtmp[qry.env, hex],
                                   hex.dist = qry.dist,
                                   acc.prop = accPortion))
-              })
+              }
+
+              tmp_what <- as.matrix(cellDT[,c("x","y","size","tmp_scv_radius")]); colnames(tmp_what) <- NULL
+              cellHexEnv <- parRapply(cl, x = tmp_what, FUN = function(x) get_cellHexEnv(cDT = x))
               cellDT[, tmp_scv_radius := NULL] # a clean up
 
               # close cells may claim in sum more than 100% of the recsources from a hexagon.
@@ -130,11 +133,10 @@ setMethod(f          = "run.simulation",
                 cat("... performing cell-agent-FBA\n", sep ='')
 
               fork_envConc      <- object@environ@concentrations
-              clusterExport(cl, c("cellHexEnv","fork_envConc"), envir = environment()) # provide important data to individual forks
+              #clusterExport(cl, c("cellHexEnv","fork_envConc"), envir = environment()) # provide important data to individual forks
 
               # the core part. Lets do this
-              agFBA_results <- parLapply(cl, 1:ncells, fun = function(i){
-
+              agentFBA <- function(i) {
                 # (2.0) Get local accessible compounds
                 cMass <- cellDT[i, mass]
                 accCompounds <- scavenge.compounds(object,
@@ -148,7 +150,7 @@ setMethod(f          = "run.simulation",
                 # (2.1) agentFBA(model, envGrids, curMass) for independent cells
                 # constrain model to lcoal environment
                 ccbnds <- changeColsBnds(problem(fork_mods[[cellDT[i, type]]]), updatedEX$ex.react.ind,
-                                        lb = updatedEX$ex.react.lb, ub = fork_models[[cellDT[i, type]]]@mod@uppbnd[updatedEX$ex.react.ind])
+                                         lb = updatedEX$ex.react.lb, ub = fork_models[[cellDT[i, type]]]@mod@uppbnd[updatedEX$ex.react.ind])
 
                 sol.fba <- optimizeProb(fork_mods[[cellDT[i, type]]])
                 mu <- sol.fba$obj * fork_deltaTime
@@ -255,7 +257,8 @@ setMethod(f          = "run.simulation",
                             I.up      = I.up,
                             I.pd      = I.pd
                 ))
-              })
+              }
+              agFBA_results <- parLapply(cl, 1:ncells, agentFBA)
 
               # update the environment
               I <- rbindlist(lapply(agFBA_results, function(x) rbindlist(list(x$I.up, x$I.pd))))
