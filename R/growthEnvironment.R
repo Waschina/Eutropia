@@ -220,27 +220,27 @@ setMethod(f          = "diffuse.compounds",
 # Plot compound distribution  #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 setGeneric(name="plot.environment",
-           def=function(object, compounds, xlim = NULL, ylim = NULL, ...)
+           def=function(object, compounds, compound.names = NULL, xlim = NULL, ylim = NULL, ...)
            {
              standardGeneric("plot.environment")
            }
 )
 
-#' Plot spatial distribution of compound
+#' Plot spatial distribution of compounds
 #'
 #' @param object An object of class \code{growthEnvrionment} or \code{growthSimulation}
 #' @param compounds Character string of compound name to plot
-#' @param xlim Limits for the x axis
-#' @param ylim Limits for the y axis
+#' @param compound.names Character string of compound names that should be desplayed as facet header instead of compound IDs from \code{compounds}.
+#' @param xlim Numeric vector of length 2 specifying the limits (left and right) for x axis; i.e. the horizontal dimension.
+#' @param ylim Numeric vector of length 2 specifying the limits (top and bottom) for y axis; i.e. the vertical dimension.
 #' @param iter Positive integer number of the simulation step/iteration to plot the distribution. Works only if \code{object} is of
-#' class \code{growthSimulation} and if the respective metabolite concentrations were recorded (sie \code{link{run.simulation}}).
+#' class \code{growthSimulation} and if the respective metabolite concentrations were recorded (see \code{link{run.simulation}}).
 setMethod(f = "plot.environment",
           signature = signature(object = "growthEnvironment",
-                                compound = "character"),
-          definition = function(object, compounds, xlim = NULL, ylim = NULL, ...) {
+                                compounds = "character"),
+          definition = function(object, compounds, compound.names = NULL, xlim = NULL, ylim = NULL, ...) {
 
-
-
+            # Argument sanity check
             if(!all(compounds %in% object@compounds)) {
               compounds <- compounds[compounds %in% object@compounds]
 
@@ -250,18 +250,56 @@ setMethod(f = "plot.environment",
               warning("Not all selected compounds are in the list of variable environment compounds. Continuing with the rest...")
             }
 
+            # If no compound names are defined, use compound IDs instead
+            cpd_nameDT <- data.table(Compound = compounds, Compound.name = compounds)
+            if(!is.null(compound.names)) {
+              if(length(compound.names) != length(compounds)){
+                warning("Number of compound names not equal to number of compound IDs. Using compound IDs instead.")
+              } else if(any(duplicated(compound.names))) {
+                warning("Duplicate compound names. Using compound IDs instead.")
+              } else {
+                cpd_nameDT$Compound.name <- compound.names
+              }
+            }
+
             envDT <- data.table(object@concentrations)
             names(envDT) <- object@compounds
             envDT <- envDT[, ..compounds]
 
             envDT <- cbind(object@hex.pts@coords, envDT)
             envDT <- melt(envDT, id.vars = c("x","y"), variable.name = "Compound", value.name = "mM")
+            envDT <- merge(envDT, cpd_nameDT)
+
+            # get expansion factor so scale bar is not to close to panel margins
+            x_exp_fac <- (xlim[2]-xlim[1]) * 0.05
+            y_exp_fac <- (ylim[2]-ylim[1]) * 0.05
+
+            # get scale bar length to span approx 10% of x-axis
+            x_span <- xlim[2]-xlim[1]
+            x_magn <- floor(log(x_span, base = 10))
+            bar_wd <- 10^x_magn / 10
+            bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd * 2.5, bar_wd) # e.g. 10 -> 25
+            bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd / 2.5 * 5, bar_wd) # e.g. 10 -> 50
 
             p <- ggplot(envDT, aes(x,y, fill = mM)) +
               geom_hex(aes(colour = mM), stat = "identity") +
               coord_equal(xlim = xlim, ylim = ylim) +
-              theme_bw() + theme(legend.position = "right") +
-              scale_fill_viridis_c() + scale_color_viridis_c() + facet_wrap("Compound")
+              geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
+                               y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = "white") +
+              annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
+                       color = "white", hjust = 0.5, vjust = -1, size = 2.5) +
+              theme_bw() +
+              scale_fill_viridis_c() + scale_color_viridis_c() + facet_wrap("Compound.name") +
+              scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
+              theme(legend.position = "right",
+                    axis.line.x.top = element_line(color = "white", size = 1.5, lineend = "round"),
+                    axis.line.x.bottom = element_line(color = "white", size = 1.5, lineend = "round"),
+                    axis.line.y.left = element_line(color = "white", size = 1.5, lineend = "round"),
+                    axis.line.y.right = element_line(color = "white", size = 1.5, lineend = "round"),
+                    panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(),
+                    panel.background = element_blank(), axis.line = element_blank(),
+                    axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank(),
+                    strip.background = element_blank(), strip.text = element_text(face = "bold", color = "black"))
 
             return(p)
           }
@@ -269,11 +307,21 @@ setMethod(f = "plot.environment",
 
 setMethod(f = "plot.environment",
           signature = signature(object = "growthSimulation",
-                                compound = "character"),
-          definition = function(object, compounds, xlim = NULL, ylim = NULL, iter = NULL) {
+                                compounds = "character"),
+          definition = function(object, compounds, compound.names = NULL, xlim = NULL, ylim = NULL, iter = NULL) {
+
+            # If no limits are defined use polygon universe limits
+            if(is.null(xlim)) {
+              xlim <- c(min(object@universePolygon[,1]),
+                        max(object@universePolygon[,1]))
+            }
+            if(is.null(ylim)) {
+              ylim <- c(min(object@universePolygon[,2]),
+                        max(object@universePolygon[,2]))
+            }
 
             if(is.null(iter))
-              return(plot.environment(object@environ, compounds, xlim, ylim))
+              return(plot.environment(object@environ, compounds, compound.names = compound.names, xlim = xlim, ylim = ylim))
 
             # in case a specific simulation round is selected
             # TODO

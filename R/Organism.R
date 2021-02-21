@@ -10,8 +10,7 @@ setClass("Organism",
            scavengeDist       = "numeric", # in µm
 
            # Genome-scale model for FBA / pFBA
-           mod      = "modelorg",
-           mod.warm = "sysBiolAlg"
+           mod      = "modelorg"
          )
 )
 
@@ -23,7 +22,6 @@ setMethod("initialize", "Organism",
                    vmax,
                    scavengeDist,
                    mod,
-                   pFBAcoeff,
                    rm.deadends,
                    ...) {
             .Object <- callNextMethod(.Object, ...)
@@ -45,9 +43,6 @@ setMethod("initialize", "Organism",
               mod <- rmReact(mod, react = der)
             }
             .Object@mod <- mod
-            .Object@mod.warm <- sysBiolAlg(mod,
-                                           algorithm = "mtf2",
-                                           pFBAcoeff = pFBAcoeff)
 
             return(.Object)
 

@@ -106,7 +106,6 @@ setGeneric(name="add.organism",
                         cellShape = "coccus",
                         vmax = 1,
                         scavengeDist = 1,
-                        pFBAcoeff = 1e-6,
                         rm.deadends = T, ...
                         )
            {
@@ -136,7 +135,6 @@ setMethod(f          = "add.organism",
                                 cellShape = "coccus",
                                 vmax = 1,
                                 scavengeDist = cellDiameter/2,
-                                pFBAcoeff = 1e-6,
                                 rm.deadends = T,
                                 ...) {
 
@@ -148,7 +146,6 @@ setMethod(f          = "add.organism",
                                          vmax = vmax,
                                          scavengeDist = scavengeDist,
                                          mod = model,
-                                         pFBAcoeff = pFBAcoeff,
                                          rm.deadends = rm.deadends)
 
             #if not provided -> assign cell positions:
@@ -240,6 +237,16 @@ setMethod(f = "plot.cells",
           signature = signature(object = "growthSimulation"),
           definition = function(object, xlim = NULL, ylim = NULL, iter = NULL) {
 
+            # If no limits are defined use polygon universe limits
+            if(is.null(xlim)) {
+              xlim <- c(min(object@universePolygon[,1]),
+                        max(object@universePolygon[,1]))
+            }
+            if(is.null(ylim)) {
+              ylim <- c(min(object@universePolygon[,2]),
+                        max(object@universePolygon[,2]))
+            }
+
             cellposDT <- data.table()
             # current
             if(is.null(iter)) {
@@ -248,27 +255,47 @@ setMethod(f = "plot.cells",
 
             # from history
             if(!is.null(iter)) {
+              if(iter > object@n_rounds) {
+                warning(paste0("Simulation did not run ",iter," iterations yet. Displaying results for last iteration (",object@n_rounds,")"))
+                iter <- object@n_rounds
+              }
+
               cellposDT <- object@history[[iter]]$cells
             }
+
+            # get expansion factor so scale bar is not to close to panel margins
+            x_exp_fac <- (xlim[2]-xlim[1]) * 0.05
+            y_exp_fac <- (ylim[2]-ylim[1]) * 0.05
+
+            # get scale bar length to span approx 10% of x-axis
+            x_span <- xlim[2]-xlim[1]
+            x_magn <- floor(log(x_span, base = 10))
+            bar_wd <- 10^x_magn / 10
+            bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd * 2.5, bar_wd) # e.g. 10 -> 25
+            bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd / 2.5 * 5, bar_wd) # e.g. 10 -> 50
 
             p <- ggplot(cellposDT, aes(x0 = x,y0 = y, r = size/2, fill = type, col = type)) +
               geom_circle(alpha = 0.3, show.legend = T) +
               coord_equal(xlim = xlim, ylim = ylim) +
+              geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
+                               y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = "white") +
+              annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
+                       color = "white", hjust = 0.5, vjust = -1, size = 2.5) +
               scale_color_brewer(palette = "Set1") +
               theme_bw() +
-              theme(plot.background = element_rect(fill = "black", color = NA),
-                    axis.title.x = element_text(color = "white"),
-                    axis.title.y = element_text(color = "white"),
-                    axis.ticks = element_line(color = "white"),
-                    axis.text = element_text(color = "white"),
+              theme(plot.background = element_rect(fill = "black"),
+                    axis.title = element_blank(),
+                    axis.ticks = element_blank(),
+                    axis.line = element_blank(),
+                    axis.text = element_blank(),
                     panel.grid = element_blank(),
                     panel.border = element_blank(),
+                    panel.background = element_blank(),
                     legend.background = element_blank(),
                     legend.text = element_text(color = "white"),
                     legend.box.background = element_blank(),
                     legend.key = element_blank(),
                     legend.title = element_text(color = "white"),
-                    panel.background = element_blank(),
                     plot.margin=unit(c(0,0,0,0), "mm")
               )
 
