@@ -291,7 +291,7 @@ setMethod(f = "plot.environment",
               theme_bw() +
               scale_fill_viridis_c() + scale_color_viridis_c() + facet_wrap("Compound.name") +
               scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
-              theme(legend.position = "right",
+              theme(legend.position = "bottom",
                     axis.line.x.top = element_line(color = "white", size = 1.5, lineend = "round"),
                     axis.line.x.bottom = element_line(color = "white", size = 1.5, lineend = "round"),
                     axis.line.y.left = element_line(color = "white", size = 1.5, lineend = "round"),

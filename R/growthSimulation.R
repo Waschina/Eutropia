@@ -275,29 +275,36 @@ setMethod(f = "plot.cells",
             bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd / 2.5 * 5, bar_wd) # e.g. 10 -> 50
 
             p <- ggplot(cellposDT, aes(x0 = x,y0 = y, r = size/2, fill = type, col = type)) +
-              geom_circle(alpha = 0.3, show.legend = T) +
+              geom_circle(alpha = 0.3, show.legend = T, key_glyph = draw_key_point) +
               coord_equal(xlim = xlim, ylim = ylim) +
               geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
                                y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = "white") +
               annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
                        color = "white", hjust = 0.5, vjust = -1, size = 2.5) +
               scale_color_brewer(palette = "Set1") +
+              scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
               theme_bw() +
-              theme(plot.background = element_rect(fill = "black"),
+              theme(plot.background = element_blank(),
+                    axis.line.x.top = element_line(color = "white", size = 1.5, lineend = "round"),
+                    axis.line.x.bottom = element_line(color = "white", size = 1.5, lineend = "round"),
+                    axis.line.y.left = element_line(color = "white", size = 1.5, lineend = "round"),
+                    axis.line.y.right = element_line(color = "white", size = 1.5, lineend = "round"),
                     axis.title = element_blank(),
                     axis.ticks = element_blank(),
                     axis.line = element_blank(),
                     axis.text = element_blank(),
                     panel.grid = element_blank(),
                     panel.border = element_blank(),
-                    panel.background = element_blank(),
+                    panel.background = element_rect(fill = "black"),
                     legend.background = element_blank(),
-                    legend.text = element_text(color = "white"),
+                    legend.text = element_text(color = "black", face = "italic"),
                     legend.box.background = element_blank(),
                     legend.key = element_blank(),
-                    legend.title = element_text(color = "white"),
-                    plot.margin=unit(c(0,0,0,0), "mm")
-              )
+                    legend.position = "bottom", legend.direction="vertical"
+              ) +
+              guides(color = guide_legend(title = "Organism",
+                                          override.aes = list(alpha = 1, size = 5)),
+                     fill  = guide_legend(title = "Organism"))
 
             return(p)
 

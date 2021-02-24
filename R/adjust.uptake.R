@@ -4,7 +4,7 @@
 # availability                      #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 setGeneric(name="adjust.uptake",
-           def=function(env_conc, model, cMass, accCpdFMOL, deltaTime)
+           def=function(model, cMass, accCpdFMOL, deltaTime)
            {
              standardGeneric("adjust.uptake")
            }
@@ -13,12 +13,11 @@ setGeneric(name="adjust.uptake",
 #' Adjust a model's lower bounds for exchange reactions based on compound accessibility
 #'
 setMethod(f          = "adjust.uptake",
-          signature  = signature(env_conc       = "matrix",
-                                 model          = "modelorg",
+          signature  = signature(model          = "modelorg",
                                  cMass          = "numeric",
                                  accCpdFMOL     = "list",
                                  deltaTime      = "numeric"),
-          definition = function(env_conc, model, cMass, accCpdFMOL, deltaTime) {
+          definition = function(model, cMass, accCpdFMOL, deltaTime) {
 
             # get overlap of models exchange reactions with lb < 0 and metablites in environment
             accMets <- paste0("EX_",accCpdFMOL$compounds)

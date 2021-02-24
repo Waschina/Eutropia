@@ -2,7 +2,7 @@
 # Run simulation       #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~#
 setGeneric(name="run.simulation",
-           def=function(object, niter, verbose = 1, lim_cells = 1e5, lim_time = 300, record = NULL, ...)
+           def=function(object, niter, verbose = 1, lim_cells = 1e5, lim_time = 300, record = NULL, n.cores = NULL, ...)
            {
              standardGeneric("run.simulation")
            },
@@ -17,49 +17,67 @@ setGeneric(name="run.simulation",
 #' @param lim_cells Simulation terminates of total number of cells exceed this value.
 #' @param lim_time Simulation terminated after the first iteration that finished after this time limit (in minutes).
 #' @param record Character vector that indicated which simulation variables should be recorded after each simulation round. See Details.
+#' @param n.cores Number of CPUs to use for parallelisation. If NULL (default), it will use the number of detectable cores minus 1 and in maximum 10 cores.
 #'
 #' @details TODO.
 setMethod(f          = "run.simulation",
           signature  = signature(object    = "growthSimulation",
                                  niter     = "numeric"),
-          definition = function(object, niter, verbose = 1, lim_cells = 1e5, lim_time = 300, record = NULL) {
+          definition = function(object, niter, verbose = 1, lim_cells = 1e5, lim_time = 300, record = NULL, n.cores = NULL) {
 
             # initialise multi core processing (with a copy of each model for each parellel fork)
+            cmad <- unlist(lapply(object@models, function(x) x@cellMassAtDivision))
             ok <- 1
-            n.cores <- 4
+            if(is.null(n.cores))
+              n.cores <- min(10, detectCores()-1)
             fork_models       <- object@models
             fork_deltaTime    <- object@deltaTime
             fork_hexVol       <- object@environ@hexVol
             fork_envCompounds <- object@environ@compounds
+            cat("Initalising simulations using",n.cores,"CPU cores...\n")
             cl <- makeCluster(n.cores)
             #clusterExport(cl, c("fork_models","fork_deltaTime", "fork_hexVol", "fork_envCompounds","ok"), envir = environment())
-            fork_ids <- clusterApply(cl, 1:n.cores, function(x){
+            init_forks <- function(x){
               require(EcoAgents)
               SYBIL_SETTINGS("SOLVER","cplexAPI")
-
-              fork_mods <<- list()
+              sybil::SYBIL_SETTINGS("METHOD", "hybbaropt") # Experimental
+              #tid <<- x
+              fork_mods <- list()
               for(mi in names(fork_models)) {
-                fork_mods[[mi]] <<- sysBiolAlg(fork_models[[mi]]@mod,
+                fork_mods[[mi]] <- sysBiolAlg(fork_models[[mi]]@mod,
                                                algorithm = "mtf2",
                                                pFBAcoeff = 1e-6)
               }
+              fork_mods <<- fork_mods
+              #mod_env <<- environment()
+              #return(fork_mods)
 
-
-            })
+            }
+            fork_ids <- clusterApply(cl, 1:n.cores, init_forks)
             rm(fork_ids)
 
             # keeping an eye on time
             t_start <- Sys.time()
             j <- 1
 
-            # while loop that cheks termination criteria before starting a new round
+            # get grid hexagon positions as data.table
+            gridDT <- as.data.table(object@environ@hex.pts)
+            gridDT[, hex := 1:.N]
+
+            # get organims' scvenge radius
+            get_scv_radius <- function(ctype) {
+              unlist(lapply(ctype, function(x) object@models[[x]]@scavengeDist))
+            }
+
+            #ram_usage <<- c(mem_used())
+            # while loop that checks termination criteria before starting a new round
             while(j <= niter & difftime(Sys.time(), t_start, units = "mins") < lim_time & nrow(object@cellDT) < lim_cells) {
               simRound <- object@n_rounds + 1
 
               # get the cells' info
-              cellDT <- copy(object@cellDT)
-              ncells <- nrow(cellDT)
-              smass  <- sum(cellDT$mass)
+              #cellDT <- copy(object@cellDT)
+              ncells <- nrow(object@cellDT)
+              smass  <- sum(object@cellDT$mass)
 
               # get elapsed time
               elapT <- round(difftime(Sys.time(), t_start, units = "secs"))
@@ -75,29 +93,23 @@ setMethod(f          = "run.simulation",
               if(verbose > 1)
                 cat("... getting cells' local environment\n", sep ='')
 
-              # get grid hexagon positions
-              gridDT <- as.data.table(object@environ@hex.pts)
-              gridDT[, hex := 1:.N]
-
               # the following gets a list for each cell, that has these elements:
               # -> First element 'hex.id' is an vector of ids of neighboring hexagons
               # -> Second element 'hex.dist' is the distance of the hexagon centers to the cell's center
-              get_scv_radius <- function(ctype) {
-                unlist(lapply(ctype, function(x) object@models[[x]]@scavengeDist))
-              }
-              cellDT[, tmp_scv_radius := get_scv_radius(type)]
-              #clusterExport(cl, c("gridDT"), envir = environment())
+              # -> Third element: 'acc.prop' is the proportion of the respective hexagon, claimed/accessible by the cell
+              object@cellDT[, tmp_scv_radius := get_scv_radius(type)]
 
-              get_cellHexEnv <- function(cDT) {
-                icell_x    <- cDT[1]
-                icell_y    <- cDT[2]
-                icell_size <- cDT[3]
-                scv_dist   <- cDT[4]
+              get_cellHexEnv <- function(x, y, size, tmp_scv_radius, gridLC) {
+                icell_x    <- x
+                icell_y    <- y
+                icell_size <- size
+                scv_dist   <- tmp_scv_radius
 
                 # pre-filter grid hexagons
-                gtmp <- gridDT[abs(x - icell_x) <= (icell_size/2 + scv_dist) &
-                                 abs(y - icell_y) <= (icell_size/2 + scv_dist)]
-                gsp  <- SpatialPoints(gtmp[,.(x,y)])
+                # gtmp <- gridDT[abs(x - icell_x) <= (icell_size/2 + scv_dist) &
+                #                  abs(y - icell_y) <= (icell_size/2 + scv_dist)]
+                # gsp  <- SpatialPoints(gtmp[,.(x,y)])
+                gsp  <- SpatialPoints(gridLC[,.(x,y)])
 
                 csp <- SpatialPoints(matrix(c(icell_x, icell_y), ncol = 2))
 
@@ -111,14 +123,30 @@ setMethod(f          = "run.simulation",
                 accPortion <-  - 1 / scv_dist * (qry.dist - (icell_size/2 + scv_dist))
                 accPortion <- ifelse(accPortion > 1, 1, accPortion)
 
-                return(data.table(hex.id   = gtmp[qry.env, hex],
+                return(data.table(hex.id   = gridLC[qry.env, hex],
                                   hex.dist = qry.dist,
                                   acc.prop = accPortion))
               }
 
-              tmp_what <- as.matrix(cellDT[,c("x","y","size","tmp_scv_radius")]); colnames(tmp_what) <- NULL
-              cellHexEnv <- parRapply(cl, x = tmp_what, FUN = function(x) get_cellHexEnv(cDT = x))
-              cellDT[, tmp_scv_radius := NULL] # a clean up
+              # calculate the local environmental conditions. Use parallel version only if more than 500 cell
+              if(ncells < 500) {
+                cellHexEnv <- lapply(1:ncells, function(i) get_cellHexEnv(x = object@cellDT[i, x],
+                                                                          y = object@cellDT[i, y],
+                                                                          size = object@cellDT[i, size],
+                                                                          tmp_scv_radius = object@cellDT[i, tmp_scv_radius],
+                                                                          gridLC = gridDT[abs(x - object@cellDT[i, x]) <= (object@cellDT[i, size]/2 + object@cellDT[i, tmp_scv_radius]) &
+                                                                                            abs(y - object@cellDT[i, y]) <= (object@cellDT[i, size]/2 + object@cellDT[i, tmp_scv_radius])]))
+
+              } else {
+                cellHexEnv <- parLapply(cl, 1:ncells, function(i) get_cellHexEnv(x = object@cellDT[i, x],
+                                                                                 y = object@cellDT[i, y],
+                                                                                 size = object@cellDT[i, size],
+                                                                                 tmp_scv_radius = object@cellDT[i, tmp_scv_radius],
+                                                                                 gridLC = gridDT[abs(x - object@cellDT[i, x]) <= (object@cellDT[i, size]/2 + object@cellDT[i, tmp_scv_radius]) &
+                                                                                                   abs(y - object@cellDT[i, y]) <= (object@cellDT[i, size]/2 + object@cellDT[i, tmp_scv_radius])]))
+              }
+
+              object@cellDT[, tmp_scv_radius := NULL] # a clean up
 
               # close cells may claim in sum more than 100% of the recsources from a hexagon.
               # Proportianally scale down accessibility in those cases:
@@ -132,52 +160,52 @@ setMethod(f          = "run.simulation",
               if(verbose > 1)
                 cat("... performing cell-agent-FBA\n", sep ='')
 
-              fork_envConc      <- object@environ@concentrations
               #clusterExport(cl, c("cellHexEnv","fork_envConc"), envir = environment()) # provide important data to individual forks
 
               # the core part. Lets do this
-              agentFBA <- function(i) {
+              agentFBA <- function(localEnv, cMass, size, type, env_conc, env_cpds) {
+
                 # (2.0) Get local accessible compounds
-                cMass <- cellDT[i, mass]
-                accCompounds <- scavenge.compounds(object,
-                                                   localEnv = cellHexEnv[.id == i])
-                updatedEX    <- adjust.uptake(env_conc   = fork_envConc,
-                                              model      = fork_models[[cellDT[i, type]]]@mod,
+                accCompounds <- scavenge.compounds(localEnv   = localEnv,
+                                                   env_conc   = env_conc,
+                                                   env_cpds   = env_cpds,
+                                                   env_hexVol = fork_hexVol)
+                updatedEX    <- adjust.uptake(model      = fork_models[[type]]@mod,
                                               cMass      = cMass,
                                               accCpdFMOL = accCompounds,
                                               deltaTime  = fork_deltaTime)
 
                 # (2.1) agentFBA(model, envGrids, curMass) for independent cells
                 # constrain model to lcoal environment
-                ccbnds <- changeColsBnds(problem(fork_mods[[cellDT[i, type]]]), updatedEX$ex.react.ind,
-                                         lb = updatedEX$ex.react.lb, ub = fork_models[[cellDT[i, type]]]@mod@uppbnd[updatedEX$ex.react.ind])
+                ccbnds <- changeColsBnds(problem(fork_mods[[type]]), updatedEX$ex.react.ind,
+                                         lb = updatedEX$ex.react.lb, ub = fork_models[[type]]@mod@uppbnd[updatedEX$ex.react.ind])
 
-                sol.fba <- optimizeProb(fork_mods[[cellDT[i, type]]])
+                sol.fba <- optimizeProb(fork_mods[[type]])
                 mu <- sol.fba$obj * fork_deltaTime
                 stat <- sol.fba$stat
 
                 # restore former bounds
-                ccbnds <- changeColsBnds(problem(fork_mods[[cellDT[i, type]]]), updatedEX$ex.react.ind,
-                                         lb = fork_models[[cellDT[i, type]]]@mod@lowbnd[updatedEX$ex.react.ind],
-                                         ub = fork_models[[cellDT[i, type]]]@mod@uppbnd[updatedEX$ex.react.ind])
+                ccbnds <- changeColsBnds(problem(fork_mods[[type]]), updatedEX$ex.react.ind,
+                                         lb = fork_models[[type]]@mod@lowbnd[updatedEX$ex.react.ind],
+                                         ub = fork_models[[type]]@mod@uppbnd[updatedEX$ex.react.ind])
 
                 # update cell mass and size
                 if(sol.fba$obj > 0 & sol.fba$stat == ok) {
                   cMass_new <- cMass * (1+mu)
-                  cSize_new <- cellDT[cell == i, size * (1+mu)^(1/3)] # sphere
+                  cSize_new <- size * (1+mu)^(1/3) # sphere
                 } else {
                   cMass_new <- cMass
-                  cSize_new <- cellDT[cell == i, size] # sphere
+                  cSize_new <- size
                 }
 
                 # get fluxes
-                flx <- sol.fba$fluxes[1:fork_models[[cellDT[i, type]]]@mod@react_num]
+                flx <- sol.fba$fluxes[1:fork_models[[type]]@mod@react_num]
 
                 # get exchange reactions with non-zero flux
                 # adjusting them to time and cell mass
-                ex.ind <- grep("^EX_",fork_models[[cellDT[i, type]]]@mod@react_id)
+                ex.ind <- grep("^EX_",fork_models[[type]]@mod@react_id)
                 ex.flx <- sol.fba$fluxes[ex.ind]
-                names(ex.flx) <- fork_models[[cellDT[i, type]]]@mod@react_id[ex.ind]
+                names(ex.flx) <- fork_models[[type]]@mod@react_id[ex.ind]
                 ex.flx <- ex.flx[abs(ex.flx) > 0]
                 # normalise to time and cell mass
                 ex.flx <- ex.flx * cMass * fork_deltaTime # uptake / production in abolute fmol in this time step and by this cell of its specific mass
@@ -208,9 +236,6 @@ setMethod(f          = "run.simulation",
                   I.up <- data.table(hex.id = rep(accmat.row2hex, ncol(accmat.upt)),
                                      concMatInd = rep(concMatInd, each =nrow(accmat.upt)),
                                      concChange = as.numeric(accmat.upt))
-
-                  #object@environ@concentrations[I[,1:2]] <- object@environ@concentrations[I[,1:2]] + I[,3]
-                  #object@environ@concentrations[I[,1:2]] <- ifelse(object@environ@concentrations[I[,1:2]] < 1e-7, 0, object@environ@concentrations[I[,1:2]])
 
                 } else {
                   I.up <- data.table(hex.id = integer(0),
@@ -244,9 +269,9 @@ setMethod(f          = "run.simulation",
                                      concChange = double(0))
                 }
 
-                #rm(sol.fba)
-                #rm(ccbnds)
-                #gc()
+                rm(ccbnds)
+                rm(sol.fba)
+                #gc() # das bremst, passt aber auf, dass kein RAM leakt
                 return(list(mu        = mu,
                             fba.stat  = stat,
                             cMass_new = cMass_new,
@@ -258,9 +283,17 @@ setMethod(f          = "run.simulation",
                             I.pd      = I.pd
                 ))
               }
-              agFBA_results <- parLapply(cl, 1:ncells, agentFBA)
+
+              agFBA_results <- parLapply(cl, 1:ncells, function(x) agentFBA(cellHexEnv[.id == x],
+                                                                            object@cellDT[x, mass],
+                                                                            object@cellDT[x, size],
+                                                                            object@cellDT[x, type],
+                                                                            env_conc = object@environ@concentrations[cellHexEnv[.id == x, hex.id],],
+                                                                            env_cpds = object@environ@compounds))
 
               # update the environment
+              if(verbose > 1)
+                cat("... update environment\n", sep ='')
               I <- rbindlist(lapply(agFBA_results, function(x) rbindlist(list(x$I.up, x$I.pd))))
               I <- I[, .(concChange = sum(concChange)), by = c("hex.id", "concMatInd")]
               I <- as.matrix(I)
@@ -284,37 +317,35 @@ setMethod(f          = "run.simulation",
                 cat("... binary fission of large cells\n", sep ='')
 
               # grow cells
-              cellDT$mass <- unlist(lapply(agFBA_results, function(x) x$cMass_new))
-              cellDT$size <- unlist(lapply(agFBA_results, function(x) x$cSize_new))
+              object@cellDT$mass <- unlist(lapply(agFBA_results, function(x) x$cMass_new))
+              object@cellDT$size <- unlist(lapply(agFBA_results, function(x) x$cSize_new))
 
-              cmad <- unlist(lapply(object@models, function(x) x@cellMassAtDivision))
-              cellDT[, cellMassAtDivision := cmad[type]]
 
-              gind <- which(cellDT$mass >= cellDT$cellMassAtDivision)
+              object@cellDT[, cellMassAtDivision := cmad[type]]
+
+              gind <- which(object@cellDT$mass >= object@cellDT$cellMassAtDivision)
               if(length(gind) > 0) {
-                newCells <- copy(cellDT[gind])
+                newCells <- copy(object@cellDT[gind])
                 newCells[, parent := cell] # save parent information
                 newCells[, cell := 1:.N]
                 newCells[, cell := cell + ncells]
 
                 # update cell mass and size of divided cells
-                cellDT <- rbind(cellDT, newCells)
-                cellDT[mass >= cellMassAtDivision, size := size * 0.5^(1/3)]
-                cellDT[mass >= cellMassAtDivision, mass := mass / 2]
+                object@cellDT <- rbind(object@cellDT, newCells)
+                object@cellDT[mass >= cellMassAtDivision, size := size * 0.5^(1/3)]
+                object@cellDT[mass >= cellMassAtDivision, mass := mass / 2]
+                rm(newCells)
 
                 # place daughter cell next to parent cell (random angle/direction)
-                cellDT[cell > ncells, x := x + size * cos(runif(.N, max = 2*pi))]
-                cellDT[cell > ncells, y := y + size * sin(runif(.N, max = 2*pi))]
+                object@cellDT[cell > ncells, x := x + size * cos(runif(.N, max = 2*pi))]
+                object@cellDT[cell > ncells, y := y + size * sin(runif(.N, max = 2*pi))]
 
                 # invert velocity of daughter cells
-                cellDT[cell > ncells, x.vel := x.vel * (-1)]
-                cellDT[cell > ncells, y.vel := y.vel * (-1)]
+                object@cellDT[cell > ncells, x.vel := x.vel * (-1)]
+                object@cellDT[cell > ncells, y.vel := y.vel * (-1)]
               }
 
-              cellDT[, cellMassAtDivision := NULL]
-
-              object@cellDT <- copy(cellDT)
-              rm(cellDT)
+              object@cellDT[, cellMassAtDivision := NULL]
 
               ncells_new <- nrow(object@cellDT)
 
@@ -384,20 +415,24 @@ setMethod(f          = "run.simulation",
                   }
                 }
 
-                gc()
+                #gc()
                 # TODO: Record individual fluxes
               }
 
 
               j <- j + 1
+              #ram_usage <<- c(ram_usage, mem_used())
               object@n_rounds <- object@n_rounds + 1
-              gc()
+              #rm(agFBA_results)
+              #gc()
+              #clusterApply(cl, 1:n.cores, gc)
             }
 
             # delete cplex problem object to free memory
             fork_ids <- clusterApply(cl, 1:n.cores, function(x){
               for(mi in names(fork_mods)) {
                 delProbCPLEX(fork_mods[[mi]]@problem@oobj@env, fork_mods[[mi]]@problem@oobj@lp)
+                closeEnvCPLEX(fork_mods[[mi]]@problem@oobj@env)
               }
             })
 
