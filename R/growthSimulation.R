@@ -28,8 +28,8 @@ setClass("growthSimulation",
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 setGeneric(name="init.simulation",
            def=function(universePolygon,
-                        gridHexSize = 1,
-                        gridHexHeight = 10,
+                        gridFieldSize = 1,
+                        gridFieldLayers = 3,
                         deltaTime = 1/6,
                         diffusion.alpha = 6/7,
                         diffusion.niter = 60,
@@ -43,20 +43,20 @@ setGeneric(name="init.simulation",
 setMethod(f          = "init.simulation",
           signature  = signature(universePolygon = "matrix"),
           definition = function(universePolygon,
-                                gridHexSize     = 1,
-                                gridHexHeight   = 10,
+                                gridFieldSize   = 1,
+                                gridFieldLayers = 3,
                                 deltaTime       = 1/6,
-                                diffusion.alpha = 6/7,
-                                diffusion.niter = floor(deltaTime * 360 * 1/gridHexSize),
+                                diffusion.alpha = 12/13, # each grid field has 12 neighbors. Plus itself: 13. 12/13 means that the concentration in one field is equally distributed among all its neigbors and itself uin each diffusion iteration step
+                                diffusion.niter = floor(deltaTime * 360 * 1/gridFieldSize),
                                 rMotion         = deltaTime, ...) {
 
 
             # init growth environment
             environ <- new("growthEnvironment",
-                           polygon.coords = universePolygon,
-                           hexagon.size = gridHexSize,
+                           polygon.coords  = universePolygon,
+                           field.size      = gridFieldSize,
                            diffusion.alpha = diffusion.alpha,
-                           hex.height = gridHexHeight)
+                           field.layers    = gridFieldLayers)
 
             # construct empty cell info table
             cellDT <- data.table(cell = numeric(),

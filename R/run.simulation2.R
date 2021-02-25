@@ -32,11 +32,11 @@ setMethod(f          = "run.simulation",
               n.cores <- min(10, detectCores()-1)
             fork_models       <- object@models
             fork_deltaTime    <- object@deltaTime
-            fork_hexVol       <- object@environ@hexVol
+            fork_fieldVol     <- object@environ@fieldVol
             fork_envCompounds <- object@environ@compounds
             cat("Initalising simulations using",n.cores,"CPU cores...\n")
             cl <- makeCluster(n.cores)
-            #clusterExport(cl, c("fork_models","fork_deltaTime", "fork_hexVol", "fork_envCompounds","ok"), envir = environment())
+
             init_forks <- function(x){
               require(EcoAgents)
               SYBIL_SETTINGS("SOLVER","cplexAPI")
@@ -51,7 +51,7 @@ setMethod(f          = "run.simulation",
               fork_mods <<- fork_mods
               #mod_env <<- environment()
               #return(fork_mods)
-
+              return(NULL)
             }
             fork_ids <- clusterApply(cl, 1:n.cores, init_forks)
             rm(fork_ids)
@@ -60,9 +60,9 @@ setMethod(f          = "run.simulation",
             t_start <- Sys.time()
             j <- 1
 
-            # get grid hexagon positions as data.table
-            gridDT <- as.data.table(object@environ@hex.pts)
-            gridDT[, hex := 1:.N]
+            # get grid field positions as data.table
+            gridDT <- as.data.table(object@environ@field.pts)
+            gridDT[, field := 1:.N]
 
             # get organims' scvenge radius
             get_scv_radius <- function(ctype) {
@@ -73,6 +73,11 @@ setMethod(f          = "run.simulation",
             # while loop that checks termination criteria before starting a new round
             while(j <= niter & difftime(Sys.time(), t_start, units = "mins") < lim_time & nrow(object@cellDT) < lim_cells) {
               simRound <- object@n_rounds + 1
+
+              # # give workers the current metabolite concentrations
+              fork_conc <- object@environ@concentrations
+              # updateConc <- clusterApply(cl, 1:n.cores, function(fork_conc) {fieldConc <<- fork_conc; return(NULL)})
+              # rm(updateConc)
 
               # get the cells' info
               #cellDT <- copy(object@cellDT)
@@ -88,30 +93,30 @@ setMethod(f          = "run.simulation",
 
 
               # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-              # (1) get each cell's neighboring environment hexagonal grid cells  #
+              # (1) get each cell's neighboring environment grid fields           #
               # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
               if(verbose > 1)
                 cat("... getting cells' local environment\n", sep ='')
 
               # the following gets a list for each cell, that has these elements:
-              # -> First element 'hex.id' is an vector of ids of neighboring hexagons
-              # -> Second element 'hex.dist' is the distance of the hexagon centers to the cell's center
-              # -> Third element: 'acc.prop' is the proportion of the respective hexagon, claimed/accessible by the cell
+              # -> First element 'field.id' is an vector of ids of neighboring fields
+              # -> Second element 'field.dist' is the distance of the field centers to the cell's center
+              # -> Third element: 'acc.prop' is the proportion of the respective field, claimed/accessible by the cell
               object@cellDT[, tmp_scv_radius := get_scv_radius(type)]
 
-              get_cellHexEnv <- function(x, y, size, tmp_scv_radius, gridLC) {
+              get_cellFieldEnv <- function(x, y, size, tmp_scv_radius, gridLC) {
                 icell_x    <- x
                 icell_y    <- y
                 icell_size <- size
                 scv_dist   <- tmp_scv_radius
 
-                # pre-filter grid hexagons
+                # pre-filter grid fields
                 # gtmp <- gridDT[abs(x - icell_x) <= (icell_size/2 + scv_dist) &
                 #                  abs(y - icell_y) <= (icell_size/2 + scv_dist)]
                 # gsp  <- SpatialPoints(gtmp[,.(x,y)])
-                gsp  <- SpatialPoints(gridLC[,.(x,y)])
+                gsp  <- SpatialPoints(gridLC[,.(x,y,z)])
 
-                csp <- SpatialPoints(matrix(c(icell_x, icell_y), ncol = 2))
+                csp <- SpatialPoints(matrix(c(icell_x, icell_y, 0), ncol = 3))
 
                 qry.env  <- which(gWithinDistance(csp,
                                                   gsp,
@@ -123,36 +128,39 @@ setMethod(f          = "run.simulation",
                 accPortion <-  - 1 / scv_dist * (qry.dist - (icell_size/2 + scv_dist))
                 accPortion <- ifelse(accPortion > 1, 1, accPortion)
 
-                return(data.table(hex.id   = gridLC[qry.env, hex],
-                                  hex.dist = qry.dist,
-                                  acc.prop = accPortion))
+                return(data.table(field.id   = gridLC[qry.env, field],
+                                  field.dist = qry.dist,
+                                  acc.prop   = accPortion))
               }
 
+              fork_cellDT <- copy(object@cellDT)
               # calculate the local environmental conditions. Use parallel version only if more than 500 cell
               if(ncells < 500) {
-                cellHexEnv <- lapply(1:ncells, function(i) get_cellHexEnv(x = object@cellDT[i, x],
-                                                                          y = object@cellDT[i, y],
-                                                                          size = object@cellDT[i, size],
-                                                                          tmp_scv_radius = object@cellDT[i, tmp_scv_radius],
-                                                                          gridLC = gridDT[abs(x - object@cellDT[i, x]) <= (object@cellDT[i, size]/2 + object@cellDT[i, tmp_scv_radius]) &
-                                                                                            abs(y - object@cellDT[i, y]) <= (object@cellDT[i, size]/2 + object@cellDT[i, tmp_scv_radius])]))
+                cellFieldEnv <- lapply(1:ncells, function(i) get_cellFieldEnv(x = fork_cellDT[i, x],
+                                                                              y = fork_cellDT[i, y],
+                                                                              size = fork_cellDT[i, size],
+                                                                              tmp_scv_radius = fork_cellDT[i, tmp_scv_radius],
+                                                                              gridLC = gridDT[abs(x - fork_cellDT[i, x]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
+                                                                                              abs(y - fork_cellDT[i, y]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
+                                                                                              abs(z - 0                  ) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius])]))
 
               } else {
-                cellHexEnv <- parLapply(cl, 1:ncells, function(i) get_cellHexEnv(x = object@cellDT[i, x],
-                                                                                 y = object@cellDT[i, y],
-                                                                                 size = object@cellDT[i, size],
-                                                                                 tmp_scv_radius = object@cellDT[i, tmp_scv_radius],
-                                                                                 gridLC = gridDT[abs(x - object@cellDT[i, x]) <= (object@cellDT[i, size]/2 + object@cellDT[i, tmp_scv_radius]) &
-                                                                                                   abs(y - object@cellDT[i, y]) <= (object@cellDT[i, size]/2 + object@cellDT[i, tmp_scv_radius])]))
+                cellFieldEnv <- parLapply(cl, 1:ncells, function(i) get_cellFieldEnv(x = fork_cellDT[i, x],
+                                                                                     y = fork_cellDT[i, y],
+                                                                                     size = fork_cellDT[i, size],
+                                                                                     tmp_scv_radius = fork_cellDT[i, tmp_scv_radius],
+                                                                                     gridLC = gridDT[abs(x - fork_cellDT[i, x]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
+                                                                                                     abs(y - fork_cellDT[i, y]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
+                                                                                                     abs(z - 0                  ) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius])]))
               }
 
               object@cellDT[, tmp_scv_radius := NULL] # a clean up
 
-              # close cells may claim in sum more than 100% of the recsources from a hexagon.
+              # close cells may claim in sum more than 100% of the resources from a field
               # Proportianally scale down accessibility in those cases:
-              cellHexEnv <- rbindlist(cellHexEnv, idcol = T)
-              cellHexEnv[, hex_claim_sum := sum(acc.prop), by = hex.id]
-              cellHexEnv[ hex_claim_sum > 1, acc.prop := acc.prop / hex_claim_sum]
+              cellFieldEnv <- rbindlist(cellFieldEnv, idcol = T)
+              cellFieldEnv[, field_claim_sum := sum(acc.prop), by = field.id]
+              cellFieldEnv[ field_claim_sum > 1, acc.prop := acc.prop / field_claim_sum]
 
               # - - - - - - - - - - - - #
               # (2) parallel agentFBA   #
@@ -160,16 +168,14 @@ setMethod(f          = "run.simulation",
               if(verbose > 1)
                 cat("... performing cell-agent-FBA\n", sep ='')
 
-              #clusterExport(cl, c("cellHexEnv","fork_envConc"), envir = environment()) # provide important data to individual forks
-
               # the core part. Lets do this
               agentFBA <- function(localEnv, cMass, size, type, env_conc, env_cpds) {
 
                 # (2.0) Get local accessible compounds
-                accCompounds <- scavenge.compounds(localEnv   = localEnv,
-                                                   env_conc   = env_conc,
-                                                   env_cpds   = env_cpds,
-                                                   env_hexVol = fork_hexVol)
+                accCompounds <- scavenge.compounds(localEnv     = localEnv,
+                                                   env_conc     = env_conc,
+                                                   env_cpds     = env_cpds,
+                                                   env_fieldVol = fork_fieldVol)
                 updatedEX    <- adjust.uptake(model      = fork_models[[type]]@mod,
                                               cMass      = cMass,
                                               accCpdFMOL = accCompounds,
@@ -214,10 +220,10 @@ setMethod(f          = "run.simulation",
                 # contribution to environment (change in metabolite concentrations) #
                 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
                 # accessibility matrix:
-                accmat <- as.matrix(accCompounds$fmolPerHex)
+                accmat           <- as.matrix(accCompounds$fmolPerField)
                 colnames(accmat) <- accCompounds$compounds
-                accmat.row2hex   <- accCompounds$hex.id
-                accmat <- t(t(accmat)/colSums(accmat)) # relative accessibilities
+                accmat.row2field <- accCompounds$field.id
+                accmat           <- t(t(accmat)/colSums(accmat)) # relative accessibilities
 
                 #--------#
                 # Uptake #
@@ -228,17 +234,17 @@ setMethod(f          = "run.simulation",
                 if(length(ex.upt) > 0) {
 
                   accmat.upt <- accmat[, names(ex.upt), drop = F]
-                  accmat.upt <- t(t(accmat.upt) * ex.upt) # fmol taken up in from each hexagon
-                  accmat.upt <- (accmat.upt / 1e12)  / (fork_hexVol / 1e15 ) # mM taken up from each hexagon
+                  accmat.upt <- t(t(accmat.upt) * ex.upt) # fmol taken up in from each field
+                  accmat.upt <- (accmat.upt / 1e12)  / (fork_fieldVol / 1e15 ) # mM taken up from each field
 
                   concMatInd <- match(colnames(accmat.upt), fork_envCompounds)
 
-                  I.up <- data.table(hex.id = rep(accmat.row2hex, ncol(accmat.upt)),
+                  I.up <- data.table(field.id = rep(accmat.row2field, ncol(accmat.upt)),
                                      concMatInd = rep(concMatInd, each =nrow(accmat.upt)),
                                      concChange = as.numeric(accmat.upt))
 
                 } else {
-                  I.up <- data.table(hex.id = integer(0),
+                  I.up <- data.table(field.id   = integer(0),
                                      concMatInd = integer(0),
                                      concChange = double(0))
                 }
@@ -250,21 +256,21 @@ setMethod(f          = "run.simulation",
                 names(ex.pro) <- gsub("^EX_","", names(ex.pro))
                 ex.pro <- ex.pro[names(ex.pro) %in% fork_envCompounds]
                 if(length(ex.pro) > 0) {
-                  hex.frac <- max(accCompounds$hex.dist) - accCompounds$hex.dist
-                  hex.frac <- hex.frac/sum(hex.frac)
+                  field.frac <- max(accCompounds$field.dist) - accCompounds$field.dist
+                  field.frac <- field.frac/sum(field.frac)
 
-                  ex.pro <- (ex.pro / 1e12) / (fork_hexVol / 1e15) # mM produced if all given to a single hexagon
+                  ex.pro <- (ex.pro / 1e12) / (fork_fieldVol / 1e15) # mM produced if all given to a single field
 
-                  pro.mat <- hex.frac %*% t(ex.pro)
+                  pro.mat <- field.frac %*% t(ex.pro)
 
                   concMatInd <- match(colnames(pro.mat), fork_envCompounds)
 
-                  I.pd <- data.table(hex.id = rep(accmat.row2hex, ncol(pro.mat)),
+                  I.pd <- data.table(field.id   = rep(accmat.row2field, ncol(pro.mat)),
                                      concMatInd = rep(concMatInd, each =nrow(pro.mat)),
                                      concChange = as.numeric(pro.mat))
 
                 } else {
-                  I.pd <- data.table(hex.id = integer(0),
+                  I.pd <- data.table(field.id   = integer(0),
                                      concMatInd = integer(0),
                                      concChange = double(0))
                 }
@@ -284,18 +290,18 @@ setMethod(f          = "run.simulation",
                 ))
               }
 
-              agFBA_results <- parLapply(cl, 1:ncells, function(x) agentFBA(cellHexEnv[.id == x],
-                                                                            object@cellDT[x, mass],
-                                                                            object@cellDT[x, size],
-                                                                            object@cellDT[x, type],
-                                                                            env_conc = object@environ@concentrations[cellHexEnv[.id == x, hex.id],],
-                                                                            env_cpds = object@environ@compounds))
+              agFBA_results <- parLapply(cl, 1:ncells, function(x) agentFBA(cellFieldEnv[.id == x],
+                                                                            fork_cellDT[x, mass],
+                                                                            fork_cellDT[x, size],
+                                                                            fork_cellDT[x, type],
+                                                                            env_conc = fork_conc[cellFieldEnv[.id == x, field.id],],
+                                                                            env_cpds = fork_envCompounds))
 
               # update the environment
               if(verbose > 1)
                 cat("... update environment\n", sep ='')
               I <- rbindlist(lapply(agFBA_results, function(x) rbindlist(list(x$I.up, x$I.pd))))
-              I <- I[, .(concChange = sum(concChange)), by = c("hex.id", "concMatInd")]
+              I <- I[, .(concChange = sum(concChange)), by = c("field.id", "concMatInd")]
               I <- as.matrix(I)
 
               object@environ@concentrations[I[,1:2]] <- object@environ@concentrations[I[,1:2]] + I[,3]
@@ -409,7 +415,6 @@ setMethod(f          = "run.simulation",
 
                     COI.rec <- object@environ@concentrations[,COI.ind]
                     colnames(COI.rec) <- object@environ@compounds[COI.ind]
-                    #COI.rec <- cbind(data.table(gridID = 1:object@environ@nhex), COI.rec)
 
                     object@history[[simRound]]$compound <- COI.rec
                   }

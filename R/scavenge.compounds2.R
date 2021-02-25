@@ -2,7 +2,7 @@
 # Scavenge compounds   #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~#
 setGeneric(name="scavenge.compounds",
-           def=function(localEnv, env_conc, env_cpds, env_hexVol)
+           def=function(localEnv, env_conc, env_cpds, env_fieldVol)
            {
              standardGeneric("scavenge.compounds")
            }
@@ -11,33 +11,33 @@ setGeneric(name="scavenge.compounds",
 #' Scavenge available compounds from local environment
 #'
 #' @param object A \code{growthSimulation} object.
-#' @param localEnv data.table for local environment. The expected columns elements are: \code{hex.id} is a
-#' vector if hexagon indeces of the environment grid; \code{hex.dist} the distance to each of the respective hexagons
-#' within the local environment; \code{acc.prop} specifies the accessible proportion of the hexagon to the cell.
+#' @param localEnv data.table for local environment. The expected columns elements are: \code{field.id} is a
+#' vector if field indeces of the environment grid; \code{field.dist} the distance to each of the respective fields
+#' within the local environment; \code{acc.prop} specifies the accessible proportion of the field to the cell.
 #' @return Lists with the following elements: \code{compounds}: character vector of compound ids, and \code{fmol}: numeric
 #' vector with the absolute metabolite availability in fmol.
 setMethod(f          = "scavenge.compounds",
           signature  = signature(localEnv       = "list",
                                  env_conc       = "matrix",
                                  env_cpds       = "character",
-                                 env_hexVol     = "numeric"),
-          definition = function(localEnv, env_conc, env_cpds, env_hexVol) {
+                                 env_fieldVol   = "numeric"),
+          definition = function(localEnv, env_conc, env_cpds, env_fieldVol) {
 
             # retrieve absolute amount of accessible metabolites
             # TODO: Add constant compounds
             accCpd <- list()
-            tmp_met <- env_conc / 1000 * env_hexVol # fmol in each hexagon (div. by 1000 because conc. are stored in mM and hex volume in µm^3)
-            tmp_met <- tmp_met * localEnv$acc.prop # fmol accessible in each hexagon
+            tmp_met <- env_conc / 1000 * env_fieldVol # fmol in each field (div. by 1000 because conc. are stored in mM and field volume in µm^3)
+            tmp_met <- tmp_met * localEnv$acc.prop # fmol accessible in each field
 
-            accCpd$fmolPerHex <- tmp_met
+            accCpd$fmolPerField <- tmp_met
 
             tmp_met <- apply(tmp_met,2,sum) # total fmol accessible to cell
 
             accCpd$compounds <- env_cpds
             accCpd$fmol      <- tmp_met
 
-            accCpd$hex.id   <- localEnv$hex.id
-            accCpd$hex.dist <- localEnv$hex.dist
+            accCpd$field.id   <- localEnv$field.id
+            accCpd$field.dist <- localEnv$field.dist
 
             return(accCpd)
           }
