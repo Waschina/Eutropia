@@ -25,36 +25,21 @@ setMethod(f          = "run.simulation",
                                  niter     = "numeric"),
           definition = function(object, niter, verbose = 1, lim_cells = 1e5, lim_time = 300, record = NULL, n.cores = NULL) {
 
-            # initialise multi core processing (with a copy of each model for each parellel fork)
+            # initialise multi core processing (with a copy of each model in warm for each parallel fork)
             cmad <- unlist(lapply(object@models, function(x) x@cellMassAtDivision))
-            ok <- 1
+            #ok <- 1
             if(is.null(n.cores))
               n.cores <- min(10, detectCores()-1)
-            fork_models       <- object@models
-            fork_deltaTime    <- object@deltaTime
-            fork_fieldVol     <- object@environ@fieldVol
-            fork_envCompounds <- object@environ@compounds
+            #fork_models       <- object@models
+            #fork_deltaTime    <- object@deltaTime
+            #fork_fieldVol     <- object@environ@fieldVol
+            #fork_envCompounds <- object@environ@compounds
             cat("Initalising simulations using",n.cores,"CPU cores...\n")
             cl <- makeCluster(n.cores)
 
-            init_forks <- function(x){
-              require(EcoAgents)
-              SYBIL_SETTINGS("SOLVER","cplexAPI")
-              sybil::SYBIL_SETTINGS("METHOD", "hybbaropt") # Experimental
-              #tid <<- x
-              fork_mods <- list()
-              for(mi in names(fork_models)) {
-                fork_mods[[mi]] <- sysBiolAlg(fork_models[[mi]]@mod,
-                                               algorithm = "mtf2",
-                                               pFBAcoeff = 1e-6)
-              }
-              fork_mods <<- fork_mods
-              #mod_env <<- environment()
-              #return(fork_mods)
-              return(NULL)
-            }
-            fork_ids <- clusterApply(cl, 1:n.cores, init_forks)
-            rm(fork_ids)
+            pre_mod_list <- lapply(1:n.cores, function(x) { return(object@models) })
+            fork_ids <- clusterApply(cl, pre_mod_list, fun = init_warm_mods)
+            rm(pre_mod_list)
 
             # keeping an eye on time
             t_start <- Sys.time()
@@ -63,6 +48,7 @@ setMethod(f          = "run.simulation",
             # get grid field positions as data.table
             gridDT <- as.data.table(object@environ@field.pts)
             gridDT[, field := 1:.N]
+            setkeyv(gridDT, c("z","x","y"))
 
             # get organims' scvenge radius
             get_scv_radius <- function(ctype) {
@@ -75,7 +61,7 @@ setMethod(f          = "run.simulation",
               simRound <- object@n_rounds + 1
 
               # # give workers the current metabolite concentrations
-              fork_conc <- object@environ@concentrations
+              # fork_conc <- object@environ@concentrations
               # updateConc <- clusterApply(cl, 1:n.cores, function(fork_conc) {fieldConc <<- fork_conc; return(NULL)})
               # rm(updateConc)
 
@@ -102,65 +88,102 @@ setMethod(f          = "run.simulation",
               # -> First element 'field.id' is an vector of ids of neighboring fields
               # -> Second element 'field.dist' is the distance of the field centers to the cell's center
               # -> Third element: 'acc.prop' is the proportion of the respective field, claimed/accessible by the cell
-              object@cellDT[, tmp_scv_radius := get_scv_radius(type)]
 
-              get_cellFieldEnv <- function(x, y, size, tmp_scv_radius, gridLC) {
-                icell_x    <- x
-                icell_y    <- y
-                icell_size <- size
-                scv_dist   <- tmp_scv_radius
+              # get_cellFieldEnv <- function(x, y, size, tmp_scv_radius, gridLC) {
+              #   icell_x    <- x
+              #   icell_y    <- y
+              #   icell_size <- size
+              #   scv_dist   <- tmp_scv_radius
+              #
+              #   # pre-filter grid fields
+              #   # gtmp <- gridDT[abs(x - icell_x) <= (icell_size/2 + scv_dist) &
+              #   #                  abs(y - icell_y) <= (icell_size/2 + scv_dist)]
+              #   # gsp  <- SpatialPoints(gtmp[,.(x,y)])
+              #   gsp  <- SpatialPoints(gridLC[,.(x,y,z)])
+              #
+              #   csp <- SpatialPoints(matrix(c(icell_x, icell_y, 0), ncol = 3))
+              #
+              #   qry.env  <- which(gWithinDistance(csp,
+              #                                     gsp,
+              #                                     dist = icell_size/2 + scv_dist, byid = T),
+              #                     useNames = F)
+              #   qry.dist <- gDistance(gsp[qry.env,], csp, byid = T)[1,]
+              #
+              #   # get accessible portion of environment grids based on distance
+              #   accPortion <-  - 1 / scv_dist * (qry.dist - (icell_size/2 + scv_dist))
+              #   accPortion <- ifelse(accPortion > 1, 1, accPortion)
+              #
+              #   return(data.table(field.id   = gridLC[qry.env, field],
+              #                     field.dist = qry.dist,
+              #                     acc.prop   = accPortion))
+              # }
 
-                # pre-filter grid fields
-                # gtmp <- gridDT[abs(x - icell_x) <= (icell_size/2 + scv_dist) &
-                #                  abs(y - icell_y) <= (icell_size/2 + scv_dist)]
-                # gsp  <- SpatialPoints(gtmp[,.(x,y)])
-                gsp  <- SpatialPoints(gridLC[,.(x,y,z)])
 
-                csp <- SpatialPoints(matrix(c(icell_x, icell_y, 0), ncol = 3))
+              pre_celFieldEnv <- lapply(1:ncells, FUN = function(i) {
+                res <- list()
+                res[["x"]]      <- object@cellDT[i, x]
+                res[["y"]]      <- object@cellDT[i, y]
+                res[["size"]]   <- object@cellDT[i, size]
+                res[["scvr"]]   <- get_scv_radius(object@cellDT[i, type])
+                # TODO: Theres probably a smater way of doing the next command - but works for now
+                res[["gridLC"]] <- gridDT[abs(x - res[["x"]]) <= (res[["size"]] /2 + res[["scvr"]]) &
+                                            abs(y - res[["y"]]) <= (res[["size"]] /2 + res[["scvr"]]) &
+                                            abs(z - 0                  ) <= (res[["size"]] /2 + res[["scvr"]])]
+                return(res)
 
-                qry.env  <- which(gWithinDistance(csp,
-                                                  gsp,
-                                                  dist = icell_size/2 + scv_dist, byid = T),
-                                  useNames = F)
-                qry.dist <- gDistance(gsp[qry.env,], csp, byid = T)[1,]
+              })
 
-                # get accessible portion of environment grids based on distance
-                accPortion <-  - 1 / scv_dist * (qry.dist - (icell_size/2 + scv_dist))
-                accPortion <- ifelse(accPortion > 1, 1, accPortion)
+              cellFieldEnv <- parLapply(cl, pre_celFieldEnv, get_cellFieldEnv_ex)
 
-                return(data.table(field.id   = gridLC[qry.env, field],
-                                  field.dist = qry.dist,
-                                  acc.prop   = accPortion))
-              }
+              # fork_cellDT <- copy(object@cellDT)
+              # fork_cellDT[, tmp_scv_radius := get_scv_radius(type)]
+              # # calculate the local environmental conditions. Use parallel version only if more than 500 cell
+              # if(ncells < 500) {
+              #   cellFieldEnv <- lapply(1:ncells, function(i) get_cellFieldEnv(x = fork_cellDT[i, x],
+              #                                                                 y = fork_cellDT[i, y],
+              #                                                                 size = fork_cellDT[i, size],
+              #                                                                 tmp_scv_radius = fork_cellDT[i, tmp_scv_radius],
+              #                                                                 gridLC = gridDT[abs(x - fork_cellDT[i, x]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
+              #                                                                                   abs(y - fork_cellDT[i, y]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
+              #                                                                                   abs(z - 0                  ) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius])]))
+              #
+              # } else {
+              #   cellFieldEnv <- parLapply(cl, 1:ncells, function(i) get_cellFieldEnv(x = fork_cellDT[i, x],
+              #                                                                        y = fork_cellDT[i, y],
+              #                                                                        size = fork_cellDT[i, size],
+              #                                                                        tmp_scv_radius = fork_cellDT[i, tmp_scv_radius],
+              #                                                                        gridLC = gridDT[abs(x - fork_cellDT[i, x]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
+              #                                                                                          abs(y - fork_cellDT[i, y]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
+              #                                                                                          abs(z - 0                  ) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius])]))
+              # }
 
-              fork_cellDT <- copy(object@cellDT)
-              # calculate the local environmental conditions. Use parallel version only if more than 500 cell
-              if(ncells < 500) {
-                cellFieldEnv <- lapply(1:ncells, function(i) get_cellFieldEnv(x = fork_cellDT[i, x],
-                                                                              y = fork_cellDT[i, y],
-                                                                              size = fork_cellDT[i, size],
-                                                                              tmp_scv_radius = fork_cellDT[i, tmp_scv_radius],
-                                                                              gridLC = gridDT[abs(x - fork_cellDT[i, x]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
-                                                                                              abs(y - fork_cellDT[i, y]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
-                                                                                              abs(z - 0                  ) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius])]))
-
-              } else {
-                cellFieldEnv <- parLapply(cl, 1:ncells, function(i) get_cellFieldEnv(x = fork_cellDT[i, x],
-                                                                                     y = fork_cellDT[i, y],
-                                                                                     size = fork_cellDT[i, size],
-                                                                                     tmp_scv_radius = fork_cellDT[i, tmp_scv_radius],
-                                                                                     gridLC = gridDT[abs(x - fork_cellDT[i, x]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
-                                                                                                     abs(y - fork_cellDT[i, y]) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius]) &
-                                                                                                     abs(z - 0                  ) <= (fork_cellDT[i, size]/2 + fork_cellDT[i, tmp_scv_radius])]))
-              }
-
-              object@cellDT[, tmp_scv_radius := NULL] # a clean up
 
               # close cells may claim in sum more than 100% of the resources from a field
               # Proportianally scale down accessibility in those cases:
               cellFieldEnv <- rbindlist(cellFieldEnv, idcol = T)
               cellFieldEnv[, field_claim_sum := sum(acc.prop), by = field.id]
-              cellFieldEnv[ field_claim_sum > 1, acc.prop := acc.prop / field_claim_sum]
+              cellFieldEnv[field_claim_sum > 1, acc.prop.tmp := acc.prop^exp(1)]
+              cellFieldEnv[field_claim_sum > 1, acc.prop.tmp := acc.prop.tmp / sum(acc.prop.tmp) * field_claim_sum, by = field.id]
+              cellFieldEnv[field_claim_sum > 1, acc.prop := acc.prop.tmp / field_claim_sum]
+
+              cellFieldEnv <- lapply(1:ncells, FUN = function(x) {
+                res <- list()
+                res[["field.id"]]   <- cellFieldEnv[.id == x, field.id]
+                res[["field.dist"]] <- cellFieldEnv[.id == x, field.dist]
+                res[["acc.prop"]]   <- cellFieldEnv[.id == x, acc.prop]
+
+                res[["field.conc"]] <- object@environ@concentrations[res[["field.id"]],]
+                res[["field.cpds"]] <- object@environ@compounds
+                res[["fieldVol"]]   <- object@environ@fieldVol
+                res[["model"]]      <- object@models[[object@cellDT[x, type]]]
+                res[["deltaTime"]]  <- object@deltaTime
+
+                res[["type"]]       <- object@cellDT[x, type]
+                res[["cMass"]]      <- object@cellDT[x, mass]
+                res[["size"]]       <- object@cellDT[x, size]
+
+                return(res)
+              })
 
               # - - - - - - - - - - - - #
               # (2) parallel agentFBA   #
@@ -169,133 +192,135 @@ setMethod(f          = "run.simulation",
                 cat("... performing cell-agent-FBA\n", sep ='')
 
               # the core part. Lets do this
-              agentFBA <- function(localEnv, cMass, size, type, env_conc, env_cpds) {
+              # agentFBA <- function(localEnv, cMass, size, type, env_conc, env_cpds) {
+              #
+              #   # (2.0) Get local accessible compounds
+              #   accCompounds <- scavenge.compounds(localEnv     = localEnv,
+              #                                      env_conc     = env_conc,
+              #                                      env_cpds     = env_cpds,
+              #                                      env_fieldVol = fork_fieldVol)
+              #   updatedEX    <- adjust.uptake(model      = fork_models[[type]]@mod,
+              #                                 cMass      = cMass,
+              #                                 accCpdFMOL = accCompounds,
+              #                                 deltaTime  = fork_deltaTime)
+              #
+              #   # (2.1) agentFBA(model, envGrids, curMass) for independent cells
+              #   # constrain model to lcoal environment
+              #   ccbnds <- changeColsBnds(problem(fork_mods[[type]]), updatedEX$ex.react.ind,
+              #                            lb = updatedEX$ex.react.lb, ub = fork_models[[type]]@mod@uppbnd[updatedEX$ex.react.ind])
+              #
+              #   sol.fba <- optimizeProb(fork_mods[[type]])
+              #   mu <- sol.fba$obj * fork_deltaTime
+              #   stat <- sol.fba$stat
+              #
+              #   # restore former bounds
+              #   ccbnds <- changeColsBnds(problem(fork_mods[[type]]), updatedEX$ex.react.ind,
+              #                            lb = fork_models[[type]]@mod@lowbnd[updatedEX$ex.react.ind],
+              #                            ub = fork_models[[type]]@mod@uppbnd[updatedEX$ex.react.ind])
+              #
+              #   # update cell mass and size
+              #   if(sol.fba$obj > 0 & sol.fba$stat == ok) {
+              #     cMass_new <- cMass * (1+mu)
+              #     cSize_new <- size * (1+mu)^(1/3) # sphere
+              #   } else {
+              #     cMass_new <- cMass
+              #     cSize_new <- size
+              #   }
+              #
+              #   # get fluxes
+              #   flx <- sol.fba$fluxes[1:fork_models[[type]]@mod@react_num]
+              #
+              #   # get exchange reactions with non-zero flux
+              #   # adjusting them to time and cell mass
+              #   ex.ind <- grep("^EX_",fork_models[[type]]@mod@react_id)
+              #   ex.flx <- sol.fba$fluxes[ex.ind]
+              #   names(ex.flx) <- fork_models[[type]]@mod@react_id[ex.ind]
+              #   ex.flx <- ex.flx[abs(ex.flx) > 0]
+              #   # normalise to time and cell mass
+              #   ex.flx <- ex.flx * cMass * fork_deltaTime # uptake / production in abolute fmol in this time step and by this cell of its specific mass
+              #
+              #   # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+              #   # contribution to environment (change in metabolite concentrations) #
+              #   # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+              #   # accessibility matrix:
+              #   accmat           <- as.matrix(accCompounds$fmolPerField)
+              #   colnames(accmat) <- accCompounds$compounds
+              #   accmat.row2field <- accCompounds$field.id
+              #   accmat           <- t(t(accmat)/colSums(accmat)) # relative accessibilities
+              #
+              #   #--------#
+              #   # Uptake #
+              #   #--------#
+              #   ex.upt <- ex.flx[ex.flx < 0]
+              #   names(ex.upt) <- gsub("^EX_","", names(ex.upt))
+              #   ex.upt <- ex.upt[names(ex.upt) %in% colnames(accmat)]
+              #   if(length(ex.upt) > 0) {
+              #
+              #     accmat.upt <- accmat[, names(ex.upt), drop = F]
+              #     accmat.upt <- t(t(accmat.upt) * ex.upt) # fmol taken up in from each field
+              #     accmat.upt <- (accmat.upt / 1e12)  / (fork_fieldVol / 1e15 ) # mM taken up from each field
+              #
+              #     concMatInd <- match(colnames(accmat.upt), fork_envCompounds)
+              #
+              #     I.up <- data.table(field.id = rep(accmat.row2field, ncol(accmat.upt)),
+              #                        concMatInd = rep(concMatInd, each =nrow(accmat.upt)),
+              #                        concChange = as.numeric(accmat.upt))
+              #
+              #   } else {
+              #     I.up <- data.table(field.id   = integer(0),
+              #                        concMatInd = integer(0),
+              #                        concChange = double(0))
+              #   }
+              #
+              #   #------------#
+              #   # Production #
+              #   #------------#
+              #   ex.pro <- ex.flx[ex.flx > 0]
+              #   names(ex.pro) <- gsub("^EX_","", names(ex.pro))
+              #   ex.pro <- ex.pro[names(ex.pro) %in% fork_envCompounds]
+              #   if(length(ex.pro) > 0) {
+              #     field.frac <- max(accCompounds$field.dist) - accCompounds$field.dist
+              #     field.frac <- field.frac/sum(field.frac)
+              #
+              #     ex.pro <- (ex.pro / 1e12) / (fork_fieldVol / 1e15) # mM produced if all given to a single field
+              #
+              #     pro.mat <- field.frac %*% t(ex.pro)
+              #
+              #     concMatInd <- match(colnames(pro.mat), fork_envCompounds)
+              #
+              #     I.pd <- data.table(field.id   = rep(accmat.row2field, ncol(pro.mat)),
+              #                        concMatInd = rep(concMatInd, each =nrow(pro.mat)),
+              #                        concChange = as.numeric(pro.mat))
+              #
+              #   } else {
+              #     I.pd <- data.table(field.id   = integer(0),
+              #                        concMatInd = integer(0),
+              #                        concChange = double(0))
+              #   }
+              #
+              #   rm(ccbnds)
+              #   rm(sol.fba)
+              #   #gc() # das bremst, passt aber auf, dass kein RAM leakt
+              #   return(list(mu        = mu,
+              #               fba.stat  = stat,
+              #               cMass_new = cMass_new,
+              #               cSize_new = cSize_new,
+              #               fluxes    = flx,
+              #               ex.fluxes = ex.flx,
+              #               accmat    = accmat,
+              #               I.up      = I.up,
+              #               I.pd      = I.pd
+              #   ))
+              # }
+              #
+              # agFBA_results <- parLapply(cl, 1:ncells, function(x) agentFBA(cellFieldEnv[.id == x],
+              #                                                               fork_cellDT[x, mass],
+              #                                                               fork_cellDT[x, size],
+              #                                                               fork_cellDT[x, type],
+              #                                                               env_conc = fork_conc[cellFieldEnv[.id == x, field.id],],
+              #                                                               env_cpds = fork_envCompounds))
 
-                # (2.0) Get local accessible compounds
-                accCompounds <- scavenge.compounds(localEnv     = localEnv,
-                                                   env_conc     = env_conc,
-                                                   env_cpds     = env_cpds,
-                                                   env_fieldVol = fork_fieldVol)
-                updatedEX    <- adjust.uptake(model      = fork_models[[type]]@mod,
-                                              cMass      = cMass,
-                                              accCpdFMOL = accCompounds,
-                                              deltaTime  = fork_deltaTime)
-
-                # (2.1) agentFBA(model, envGrids, curMass) for independent cells
-                # constrain model to lcoal environment
-                ccbnds <- changeColsBnds(problem(fork_mods[[type]]), updatedEX$ex.react.ind,
-                                         lb = updatedEX$ex.react.lb, ub = fork_models[[type]]@mod@uppbnd[updatedEX$ex.react.ind])
-
-                sol.fba <- optimizeProb(fork_mods[[type]])
-                mu <- sol.fba$obj * fork_deltaTime
-                stat <- sol.fba$stat
-
-                # restore former bounds
-                ccbnds <- changeColsBnds(problem(fork_mods[[type]]), updatedEX$ex.react.ind,
-                                         lb = fork_models[[type]]@mod@lowbnd[updatedEX$ex.react.ind],
-                                         ub = fork_models[[type]]@mod@uppbnd[updatedEX$ex.react.ind])
-
-                # update cell mass and size
-                if(sol.fba$obj > 0 & sol.fba$stat == ok) {
-                  cMass_new <- cMass * (1+mu)
-                  cSize_new <- size * (1+mu)^(1/3) # sphere
-                } else {
-                  cMass_new <- cMass
-                  cSize_new <- size
-                }
-
-                # get fluxes
-                flx <- sol.fba$fluxes[1:fork_models[[type]]@mod@react_num]
-
-                # get exchange reactions with non-zero flux
-                # adjusting them to time and cell mass
-                ex.ind <- grep("^EX_",fork_models[[type]]@mod@react_id)
-                ex.flx <- sol.fba$fluxes[ex.ind]
-                names(ex.flx) <- fork_models[[type]]@mod@react_id[ex.ind]
-                ex.flx <- ex.flx[abs(ex.flx) > 0]
-                # normalise to time and cell mass
-                ex.flx <- ex.flx * cMass * fork_deltaTime # uptake / production in abolute fmol in this time step and by this cell of its specific mass
-
-                # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
-                # contribution to environment (change in metabolite concentrations) #
-                # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
-                # accessibility matrix:
-                accmat           <- as.matrix(accCompounds$fmolPerField)
-                colnames(accmat) <- accCompounds$compounds
-                accmat.row2field <- accCompounds$field.id
-                accmat           <- t(t(accmat)/colSums(accmat)) # relative accessibilities
-
-                #--------#
-                # Uptake #
-                #--------#
-                ex.upt <- ex.flx[ex.flx < 0]
-                names(ex.upt) <- gsub("^EX_","", names(ex.upt))
-                ex.upt <- ex.upt[names(ex.upt) %in% colnames(accmat)]
-                if(length(ex.upt) > 0) {
-
-                  accmat.upt <- accmat[, names(ex.upt), drop = F]
-                  accmat.upt <- t(t(accmat.upt) * ex.upt) # fmol taken up in from each field
-                  accmat.upt <- (accmat.upt / 1e12)  / (fork_fieldVol / 1e15 ) # mM taken up from each field
-
-                  concMatInd <- match(colnames(accmat.upt), fork_envCompounds)
-
-                  I.up <- data.table(field.id = rep(accmat.row2field, ncol(accmat.upt)),
-                                     concMatInd = rep(concMatInd, each =nrow(accmat.upt)),
-                                     concChange = as.numeric(accmat.upt))
-
-                } else {
-                  I.up <- data.table(field.id   = integer(0),
-                                     concMatInd = integer(0),
-                                     concChange = double(0))
-                }
-
-                #------------#
-                # Production #
-                #------------#
-                ex.pro <- ex.flx[ex.flx > 0]
-                names(ex.pro) <- gsub("^EX_","", names(ex.pro))
-                ex.pro <- ex.pro[names(ex.pro) %in% fork_envCompounds]
-                if(length(ex.pro) > 0) {
-                  field.frac <- max(accCompounds$field.dist) - accCompounds$field.dist
-                  field.frac <- field.frac/sum(field.frac)
-
-                  ex.pro <- (ex.pro / 1e12) / (fork_fieldVol / 1e15) # mM produced if all given to a single field
-
-                  pro.mat <- field.frac %*% t(ex.pro)
-
-                  concMatInd <- match(colnames(pro.mat), fork_envCompounds)
-
-                  I.pd <- data.table(field.id   = rep(accmat.row2field, ncol(pro.mat)),
-                                     concMatInd = rep(concMatInd, each =nrow(pro.mat)),
-                                     concChange = as.numeric(pro.mat))
-
-                } else {
-                  I.pd <- data.table(field.id   = integer(0),
-                                     concMatInd = integer(0),
-                                     concChange = double(0))
-                }
-
-                rm(ccbnds)
-                rm(sol.fba)
-                #gc() # das bremst, passt aber auf, dass kein RAM leakt
-                return(list(mu        = mu,
-                            fba.stat  = stat,
-                            cMass_new = cMass_new,
-                            cSize_new = cSize_new,
-                            fluxes    = flx,
-                            ex.fluxes = ex.flx,
-                            accmat    = accmat,
-                            I.up      = I.up,
-                            I.pd      = I.pd
-                ))
-              }
-
-              agFBA_results <- parLapply(cl, 1:ncells, function(x) agentFBA(cellFieldEnv[.id == x],
-                                                                            fork_cellDT[x, mass],
-                                                                            fork_cellDT[x, size],
-                                                                            fork_cellDT[x, type],
-                                                                            env_conc = fork_conc[cellFieldEnv[.id == x, field.id],],
-                                                                            env_cpds = fork_envCompounds))
+              agFBA_results <- parLapply(cl, cellFieldEnv, agentFBA_ex)
 
               # update the environment
               if(verbose > 1)
@@ -424,6 +449,14 @@ setMethod(f          = "run.simulation",
                 # TODO: Record individual fluxes
               }
 
+              # small cell summary
+              if(verbose > 1) {
+                cellsum <- copy(object@cellDT[,.(mass = round(sum(mass), digits = 2)), by = type])
+                cellsum[, tmp.sum := paste0(type,"(",mass,")")]
+                cellsum <- paste(cellsum$tmp.sum, collapse = " ")
+                cat("    ",cellsum,"\n", sep ='')
+              }
+
 
               j <- j + 1
               #ram_usage <<- c(ram_usage, mem_used())
@@ -434,12 +467,7 @@ setMethod(f          = "run.simulation",
             }
 
             # delete cplex problem object to free memory
-            fork_ids <- clusterApply(cl, 1:n.cores, function(x){
-              for(mi in names(fork_mods)) {
-                delProbCPLEX(fork_mods[[mi]]@problem@oobj@env, fork_mods[[mi]]@problem@oobj@lp)
-                closeEnvCPLEX(fork_mods[[mi]]@problem@oobj@env)
-              }
-            })
+            fork_ids <- clusterApply(cl, 1:n.cores, close_clusters)
 
             # stop cluster forks
             stopCluster(cl)
@@ -447,3 +475,193 @@ setMethod(f          = "run.simulation",
             return(object)
           }
 )
+
+#
+#
+#
+#
+#
+init_warm_mods <- function(x) {
+  require(EcoAgents)
+  SYBIL_SETTINGS("SOLVER","cplexAPI")
+  #sybil::SYBIL_SETTINGS("METHOD", "hybbaropt") # Experimental
+  #tid <<- x
+  fork_mods <- list()
+  for(mi in names(x)) {
+    fork_mods[[mi]] <- sysBiolAlg(x[[mi]]@mod,
+                                  algorithm = "mtf2",
+                                  pFBAcoeff = 1e-6)
+  }
+  fork_mods <<- fork_mods
+  ok <<- 1
+  #mod_env <<- environment()
+  #return(fork_mods)
+  return(NULL)
+}
+
+#
+#
+#
+#
+#
+get_cellFieldEnv_ex <- function(x) {
+  icell_x    <- x$x
+  icell_y    <- x$y
+  icell_size <- x$size
+  scv_dist   <- x$scvr
+
+  gsp  <- SpatialPoints(x$gridLC[,.(x,y,z)])
+
+  csp <- SpatialPoints(matrix(c(icell_x, icell_y, 0), ncol = 3))
+
+  # qry.env  <- which(gWithinDistance(csp,
+  #                                   gsp,
+  #                                   dist = icell_size/2 + scv_dist, byid = T),
+  #                   useNames = F)
+  q.c.dist <- spDists(gsp, csp)[,1]
+
+  qry.env <- which(q.c.dist <= (icell_size/2 + scv_dist))
+
+  #qry.dist <- gDistance(gsp[qry.env,], csp, byid = T)[1,]
+  qry.dist <- q.c.dist[qry.env]
+
+  # get accessible portion of environment grids based on distance
+  accPortion <-  - 1 / scv_dist * (qry.dist - (icell_size/2 + scv_dist))
+  accPortion <- ifelse(accPortion > 1, 1, accPortion)
+
+  return(data.table(field.id   = x$gridLC[qry.env, field],
+                    field.dist = qry.dist,
+                    acc.prop   = accPortion))
+}
+
+#
+#
+#
+#
+#
+agentFBA_ex <- function(x) {
+  # (2.0) Get local accessible compounds
+  accCompounds <- scavenge.compounds(localEnv     = x[c("acc.prop","field.id","field.dist")],
+                                     env_conc     = x$field.conc,
+                                     env_cpds     = x$field.cpds,
+                                     env_fieldVol = x$fieldVol)
+  updatedEX    <- adjust.uptake(model      = x$model@mod,
+                                cMass      = x$cMass,
+                                accCpdFMOL = accCompounds,
+                                deltaTime  = x$deltaTime)
+
+  # (2.1) agentFBA(model, envGrids, curMass) for independent cells
+  # constrain model to lcoal environment
+  ccbnds <- changeColsBnds(problem(fork_mods[[x$type]]), updatedEX$ex.react.ind,
+                           lb = updatedEX$ex.react.lb, ub = x$model@mod@uppbnd[updatedEX$ex.react.ind])
+
+  sol.fba <- optimizeProb(fork_mods[[x$type]])
+  mu <- sol.fba$obj * x$deltaTime
+  stat <- sol.fba$stat
+
+  # restore former bounds
+  ccbnds <- changeColsBnds(problem(fork_mods[[x$type]]), updatedEX$ex.react.ind,
+                           lb = x$model@mod@lowbnd[updatedEX$ex.react.ind],
+                           ub = x$model@mod@uppbnd[updatedEX$ex.react.ind])
+
+  # update cell mass and size
+  if(sol.fba$obj > 0 & sol.fba$stat == ok) {
+    cMass_new <- x$cMass * (1+mu)
+    cSize_new <- x$size * (1+mu)^(1/3) # sphere
+  } else {
+    cMass_new <- x$cMass
+    cSize_new <- x$size
+  }
+
+  # get fluxes
+  flx <- sol.fba$fluxes[1:x$model@mod@react_num]
+
+  # get exchange reactions with non-zero flux
+  # adjusting them to time and cell mass
+  ex.ind <- grep("^EX_",x$model@mod@react_id)
+  ex.flx <- sol.fba$fluxes[ex.ind]
+  names(ex.flx) <- x$model@mod@react_id[ex.ind]
+  ex.flx <- ex.flx[abs(ex.flx) > 0]
+  # normalise to time and cell mass
+  ex.flx <- ex.flx * x$cMass * x$deltaTime # uptake / production in absolute fmol in this time step and by this cell of its specific mass
+
+  # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+  # contribution to environment (change in metabolite concentrations) #
+  # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+  # accessibility matrix:
+  accmat           <- as.matrix(accCompounds$fmolPerField)
+  colnames(accmat) <- accCompounds$compounds
+  accmat.row2field <- accCompounds$field.id
+  accmat           <- t(t(accmat)/colSums(accmat)) # relative accessibilities
+
+  #--------#
+  # Uptake #
+  #--------#
+  ex.upt <- ex.flx[ex.flx < 0]
+  names(ex.upt) <- gsub("^EX_","", names(ex.upt))
+  ex.upt <- ex.upt[names(ex.upt) %in% colnames(accmat)]
+  if(length(ex.upt) > 0) {
+
+    accmat.upt <- accmat[, names(ex.upt), drop = F]
+    accmat.upt <- t(t(accmat.upt) * ex.upt) # fmol taken up in from each field
+    accmat.upt <- (accmat.upt / 1e12)  / (x$fieldVol / 1e15 ) # mM taken up from each field
+
+    concMatInd <- match(colnames(accmat.upt), x$field.cpds)
+
+    I.up <- data.table(field.id = rep(accmat.row2field, ncol(accmat.upt)),
+                       concMatInd = rep(concMatInd, each =nrow(accmat.upt)),
+                       concChange = as.numeric(accmat.upt))
+
+  } else {
+    I.up <- data.table(field.id   = integer(0),
+                       concMatInd = integer(0),
+                       concChange = double(0))
+  }
+
+  #------------#
+  # Production #
+  #------------#
+  ex.pro <- ex.flx[ex.flx > 0]
+  names(ex.pro) <- gsub("^EX_","", names(ex.pro))
+  ex.pro <- ex.pro[names(ex.pro) %in% x$field.cpds]
+  if(length(ex.pro) > 0) {
+    field.frac <- max(accCompounds$field.dist) - accCompounds$field.dist
+    field.frac <- field.frac/sum(field.frac)
+
+    ex.pro <- (ex.pro / 1e12) / (x$fieldVol / 1e15) # mM produced if all given to a single field
+
+    pro.mat <- field.frac %*% t(ex.pro)
+
+    concMatInd <- match(colnames(pro.mat), x$field.cpds)
+
+    I.pd <- data.table(field.id   = rep(accmat.row2field, ncol(pro.mat)),
+                       concMatInd = rep(concMatInd, each =nrow(pro.mat)),
+                       concChange = as.numeric(pro.mat))
+
+  } else {
+    I.pd <- data.table(field.id   = integer(0),
+                       concMatInd = integer(0),
+                       concChange = double(0))
+  }
+
+  rm(ccbnds)
+  rm(sol.fba)
+  #gc() # das bremst, passt aber auf, dass kein RAM leakt
+  return(list(mu        = mu,
+              fba.stat  = stat,
+              cMass_new = cMass_new,
+              cSize_new = cSize_new,
+              fluxes    = flx,
+              ex.fluxes = ex.flx,
+              accmat    = accmat,
+              I.up      = I.up,
+              I.pd      = I.pd
+  ))
+}
+
+close_clusters <- function(x){
+  for(mi in names(fork_mods)) {
+    delProbCPLEX(fork_mods[[mi]]@problem@oobj@env, fork_mods[[mi]]@problem@oobj@lp)
+    closeEnvCPLEX(fork_mods[[mi]]@problem@oobj@env)
+  }
+}

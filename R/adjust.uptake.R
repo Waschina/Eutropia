@@ -19,7 +19,7 @@ setMethod(f          = "adjust.uptake",
                                  deltaTime      = "numeric"),
           definition = function(model, cMass, accCpdFMOL, deltaTime) {
 
-            # get overlap of models exchange reactions with lb < 0 and metablites in environment
+            # get overlap of models exchange reactions with lb < 0 and metabolites in environment
             accMets <- paste0("EX_",accCpdFMOL$compounds)
 
             rel.mets.inds <- which(accMets %in% model@react_id)
@@ -34,7 +34,7 @@ setMethod(f          = "adjust.uptake",
 
             lb.mat <- matrix(0, nrow = length(rel.mets), ncol = 2)
 
-            lb.mat[,1] <- accCpdFMOL$fmol[rel.mets.inds] * (1 / deltaTime) / cMass
+            lb.mat[,1] <- accCpdFMOL$fmol[rel.mets.inds] * (1 / deltaTime) / cMass # fmol/(pg * hr) = mmol/ (g * hr)
             lb.mat[,2] <- -model@lowbnd[model.ex.ind]
 
             ex.react.lb <- apply(lb.mat,1,min)

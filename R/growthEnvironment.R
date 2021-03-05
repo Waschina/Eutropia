@@ -267,6 +267,10 @@ setMethod(f          = "build.DCM",
             diag(DCM) <- 1 - Matrix::rowSums(DCM)
             DCM <- Matrix::t(DCM)
 
+            # # diffusion for n iterations
+            # for(i in 1:120)
+            #   DCM <- DCM %*% Matrix::t(DCM)
+
             return(DCM) # Diffusion coefficient matrix
           }
 )
@@ -371,7 +375,8 @@ setMethod(f = "plot.environment",
             bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd / 2.5 * 5, bar_wd) # e.g. 10 -> 50
 
             p <- ggplot(envDT, aes(x,y, fill = mM)) +
-              geom_hex(aes(colour = mM), stat = "identity") +
+              #geom_hex(aes(colour = mM), stat = "identity") +
+              geom_bin2d(aes(colour = mM), stat = "identity") +
               coord_equal(xlim = xlim, ylim = ylim) +
               geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
                                y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = "white") +

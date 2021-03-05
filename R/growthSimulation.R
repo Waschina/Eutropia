@@ -47,7 +47,7 @@ setMethod(f          = "init.simulation",
                                 gridFieldLayers = 3,
                                 deltaTime       = 1/6,
                                 diffusion.alpha = 12/13, # each grid field has 12 neighbors. Plus itself: 13. 12/13 means that the concentration in one field is equally distributed among all its neigbors and itself uin each diffusion iteration step
-                                diffusion.niter = floor(deltaTime * 360 * 1/gridFieldSize),
+                                diffusion.niter = floor(deltaTime * 360 * 1/gridFieldSize)*2,
                                 rMotion         = deltaTime, ...) {
 
 
@@ -78,7 +78,7 @@ setMethod(f          = "init.simulation",
                           cellDT = cellDT,
                           universePolygon = universePolygon,
                           environ = environ
-                          )
+            )
 
             # setting the solver to cplex
             sybil::SYBIL_SETTINGS("SOLVER","cplexAPI"); ok <<- 1
@@ -105,9 +105,9 @@ setGeneric(name="add.organism",
                         cellMassAtDivision = 0.55,
                         cellShape = "coccus",
                         vmax = 1,
-                        scavengeDist = 1,
+                        scavengeDist = 5,
                         rm.deadends = T, ...
-                        )
+           )
            {
              standardGeneric("add.organism")
            }
@@ -129,12 +129,12 @@ setMethod(f          = "add.organism",
                                 distribution.method = "random_centroid",
                                 distribution.center = NULL,
                                 distribution.radius = NULL,
-                                cellDiameter = (3 * 1 / (4 * pi))^(1/3) * 2, # dimeter of sphere with 1 µm^3
+                                cellDiameter = (3 * 1 / (4 * pi))^(1/3) * 2, # diameter of sphere with 1 µm^3
                                 cellMassInit = 0.28,
                                 cellMassAtDivision = 0.56,
                                 cellShape = "coccus",
                                 vmax = 1,
-                                scavengeDist = cellDiameter/2,
+                                scavengeDist = cellDiameter*2.5,
                                 rm.deadends = T,
                                 ...) {
 
