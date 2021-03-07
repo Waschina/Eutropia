@@ -1,3 +1,18 @@
+
+#' Structure of the S4 class "growthSimulation"
+#'
+#' Structure of the S4 class \code{growthSimulation} as framework for the grwoth environment and container for agent-based flux balance analysis.
+#' @import Matrix Rcpp
+#' @exportClass growthSimulation
+#'
+#' @slot n_rounds integer for the number of simulation rounds that were already performed for this \code{growthSimulation} object.
+#' @slot deltaTime double for length of each time step for the simulation in hours.
+#' @slot diffusionNIter integer. Number of diffusion steps per simulation round.
+#' @slot rMotion double. Maximum x- and y distance a cell can travel by means of random movement per simulation round.
+#' @slot models list for \code{Organism} objects to represent the different strains in the simulation.
+#' @slot history list with recordings of simulation status information at each simulation round.
+#' @slot universePolygon Matrix specifiying the corners of the polygon that defined the growth environment boundaries. 2-dimensional: x and y.
+#' @slot environ Object of S4-class \code{grwothEnvironment}, that specifies the environment mesh layout, compounds, and their concentrations.
 setClass("growthSimulation",
 
          slots = c(
@@ -26,6 +41,28 @@ setClass("growthSimulation",
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 #  Initialize Simulation Object #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+
+#' @title Initialise a growth simulation.
+#'
+#' @description Method to initialise a \code{growthSimulation} object
+#'
+#' @export
+#' @rdname growthSimulation-Initiation
+#' @param universePolygon A two column matrix specifiying the x and y coordinates of the polygon, that describes the growth environment boundaries.
+#' @param gridFieldSize double. Distance between neighboring environments 3D mesh field elements (rhombic dodecahedrons) in µm.
+#' @param gridFieldLayers integer. z-dimension (height) as the number of layers of field elements.
+#' @param deltaTime double specifying the length of each time step for the simulation in hours.
+#' @param diffusion.alpha double. This number should be between 0 and 1 and specifies the rate of naive diffusion, but specifying the fraction of compound in a field that is equally distributed to the neigboring fields. Default: 12/13.
+#' @param diffusion.niter integer. Number of diffusion steps per simulation round.
+#' @param pFBAcoeff integer. pFBA coefficient. Default: 1e-6
+#' @param rMotion double. Maximum x- and y distance a cell can travel by means of random movement per minute. Default: 1/6 µm
+#'
+#' @return Object of class \code{growthSimulation}.
+#'
+#' @examples
+#' # Contruction a square environment of dimensions 300µm x 300µm x 5µm
+#' sim <- init.simulation(cbind(c(-150, -150, 150, 150), c(-150, 150, 150, -150)),
+#'                        gridFieldSize = 1.75, gridFieldLayers = 5)
 setGeneric(name="init.simulation",
            def=function(universePolygon,
                         gridFieldSize = 1,
@@ -91,16 +128,61 @@ setMethod(f          = "init.simulation",
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 #  Add organism cells to simulation object  #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+
+#' @title Add a model/organism to simulation
+#'
+#' @description Adds an organism an its genome-scale metabolic network model to the growth simulation object.
+#'
+#' @param object S4-object of type \code{growthSimulation}.
+#' @param model The organisms metabolic model of S4-type \code{sybil::modelorg}
+#' @param name Character for the name of the model, that will also be used for plotting.
+#' @param ncells integer. Number of initial cells to be added to the growth simulation.
+#' @param coords (optional) A two column numerical matrix specifying the coordinates (1st column x, 2nd column y) of the initial cells. If provided, the number of rows should be equal to \code{ncells}. Default: NULL
+#' @param distribution.method If \code{coords} is \code{NULL}, this parameter specifies the distribution method for initial cells. Default: "random_centroid"
+#' @param distribution.center Numeric vector of length 2, which specifies the coordinates of the centre for the \code{distribution.method}.
+#' @param distribution.radius double. Spcifies the radius (in µm) in which inital cells are distributed.
+#' @param cellDiameter double. Diameter in µm of initial cells.
+#' @param cellMassInit double. Mass in pg of initial cells. Default is 0.28 pg
+#' @param cellMassAtDivision double. Cell mass at which a cell devides in two daughter cells. Default: 0.55 pg
+#' @param cellShape character. Shape of cells. Currently only "coccus" is supported.
+#' @param vmax double. Maximum velocity of a cell in µm per minute.
+#' @param scavengeDist double. Distance in µm a cell can scavenge nutrients from its surrounding.
+#' @param rm.deadends If TRUE, dead-end metabolites and reactions are removed from the \code{model}, which reduces the computation time for FBA, but has otherwise no effect on the flux distribution solutions.
+#'
+#' @return Object of class \code{growthSimulation}.
+#'
+#' @references
+#'  \url{https://bionumbers.hms.harvard.edu/bionumber.aspx?id=100008} \cr
+#'  \url{http://book.bionumbers.org/how-big-is-an-e-coli-cell-and-what-is-its-mass/}
+#'
+#' @examples
+#' # add two bacterial models (Eubacterium rectale, Bifidobacterium longum)
+#' # to the environment; each with 15 initial cells
+#' models <- list()
+#' models[['eure']] <- readRDS(system.file("extdata", "eure.RDS", package="EcoAgents"))
+#' models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS", package="EcoAgents"))
+#'
+#' sim <- init.simulation(cbind(c(-150, -150, 150, 150), c(-150, 150, 150, -150)),
+#'                        gridFieldSize = 1.75, gridFieldLayers = 5)
+#'
+#' sim <- add.organism(sim, model = models[["eure"]], name = "E. rectale",
+#'                     ncells = 15, distribution.radius = 30)
+#' sim <- add.organism(sim, model = models[["bilo"]], name = "B. longum",
+#'                     ncells = 15, distribution.radius = 30)
+#'
+#' plot.cells(sim, xlim = c(-50,50), ylim= c(-50,50))
+#'
+#' @export
 setGeneric(name="add.organism",
            def=function(object,
                         model,
                         name,
                         ncells,
-                        coords = NA,
+                        coords = NULL,
                         distribution.method = "random_centroid",
                         distribution.center = NULL,
                         distribution.radius = NULL,
-                        cellDiameter = 1,
+                        cellDiameter = (3 * 1 / (4 * pi))^(1/3) * 2, # diameter of sphere with 1 µm^3
                         cellMassInit = 0.28,
                         cellMassAtDivision = 0.55,
                         cellShape = "coccus",
@@ -113,9 +195,6 @@ setGeneric(name="add.organism",
            }
 )
 
-#'
-#'
-#' Defaults from: https://bionumbers.hms.harvard.edu/bionumber.aspx?id=100008 and http://book.bionumbers.org/how-big-is-an-e-coli-cell-and-what-is-its-mass/
 setMethod(f          = "add.organism",
           signature  = signature(object = "growthSimulation",
                                  model  = "modelorg",
@@ -125,7 +204,7 @@ setMethod(f          = "add.organism",
                                 model,
                                 name,
                                 ncells,
-                                coords = NA,
+                                coords = NULL,
                                 distribution.method = "random_centroid",
                                 distribution.center = NULL,
                                 distribution.radius = NULL,
@@ -149,7 +228,7 @@ setMethod(f          = "add.organism",
                                          rm.deadends = rm.deadends)
 
             #if not provided -> assign cell positions:
-            if(is.na(coords)) {
+            if(is.null(coords)) {
               if(!(distribution.method %in% c("random","random_centroid")))
                 stop("Distribution method not supported. Choose one of \"random\",\"random_centroid\".")
               universePG <- Polygon(object@universePolygon)
@@ -199,6 +278,14 @@ setMethod(f          = "add.organism",
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 # show method for small summary #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+
+#' @title Print a short summary of a growth simulation
+#'
+#' @description Displays a few numbers to describe the current status of a growth simulation.
+#'
+#' @param object S4-object of type \code{growthSimulation}.
+#'
+#' @export
 setMethod(f          = "show",
           signature  = signature(object = "growthSimulation"),
           definition = function(object) {
@@ -211,7 +298,16 @@ setMethod(f          = "show",
             print(object@cellDT[, .(cells = .N, `mass in pg` = sum(mass)), by = "type"])
             cat("\n")
 
-            show(object@environ)
+            # Environment
+            cat("Cell growth environment\n")
+            cat("    Universe dimensions (µm):\t\t",
+                abs(round(min(object@environ@field.pts@coords[,1])-max(object@environ@field.pts@coords[,1]), digits = 2))," x ",
+                abs(round(min(object@environ@field.pts@coords[,2])-max(object@environ@field.pts@coords[,2]), digits = 2))," x ",
+                abs(round(min(object@environ@field.pts@coords[,3])-max(object@environ@field.pts@coords[,3]), digits = 2)),"\n")
+            cat("    Universe volume (µm^3):\t\t", round(object@environ@fieldSize * object@environ@nfields, digits = 2) , "\n")
+            cat("    Number of rhombic dodecahedrons:\t",object@environ@nfields,"\n")
+            cat("    Number of variable compounds:\t",length(object@environ@compounds),"\n")
+
           }
 )
 
@@ -219,20 +315,26 @@ setMethod(f          = "show",
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 # Plot cell distribution  #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+
+#' @title Plot spatial distribution of cells
+#'
+#' @description Plots the distribution of cells in a growth simulation.
+#'
+#' @param object S4-object of type \code{growthSimulation}.
+#' @param xlim Numeric vector of length 2, specifying the x-range to be displayed.
+#' @param ylim Numeric vector of length 2, specifying the y-range to be displayed.
+#' @param iter Positive integer number of the simulation step/iteration to plot the cell distribution. If past simulation are displayed, the cell postitions needed to be recorded when running the simulation before (see \code{link{run.simulation}}). If NULL, current distribution is displayed.
+#'
+#' @return A ggplot object.
+#'
+#' @export
 setGeneric(name="plot.cells",
-           def=function(object, compounds, xlim = NULL, ylim = NULL, ...)
+           def=function(object, xlim = NULL, ylim = NULL, ...)
            {
              standardGeneric("plot.cells")
            }
 )
 
-#' Plot spatial distribution of cells
-#'
-#' @param object An object of class \code{growthEnvrionment} or \code{growthSimulation}
-#' @param xlim Limits for the x axis
-#' @param ylim Limits for the y axis
-#' @param iter Positive integer number of the simulation step/iteration to plot the distribution. Works only if \code{object} is of
-#' class \code{growthSimulation} and if the respective metabolite concentrations were recorded (sie \code{link{run.simulation}}).
 setMethod(f = "plot.cells",
           signature = signature(object = "growthSimulation"),
           definition = function(object, xlim = NULL, ylim = NULL, iter = NULL) {
@@ -311,3 +413,172 @@ setMethod(f = "plot.cells",
           }
 )
 
+
+#' @title Add compounds to the growth environment
+#'
+#' @description The function can be used to add substances to the growth environment by providing concentrations in mM.
+#'
+#' @param object S4-object of type \code{growthSimulation}.
+#' @param compounds Character vector with the compound IDs of substances to add to the environment. Compound IDs should correspond to the models' exchange reactions IDs ("EX_[cpdid]"), without the "EX_" prefix.
+#' @param concentrations Numeric vector with the concentrations of the compounds from \code{compounds} in the same order. Values in mM.
+#'
+#' @details Compound concentration are equally distributed across the whole growth environment. More options are planned.
+#'
+#' @return Return a S4-object of type \code{growthSimulation}.
+#'
+#' @examples
+#' sim <- init.simulation(cbind(c(-100, -100, 100, 100), c(-100, 100, 100, -100)),
+#'                        gridFieldSize = 2, gridFieldLayers = 5)
+#'
+#' sim <- add.compounds(sim,
+#'                      compounds = c("cpd00027_e0","cpd00029_e0","cpd00047_e0",
+#'                                    "cpd00159_e0","cpd00211_e0"),
+#'                      concentrations = c(50,0,0,0,0))
+#'
+#' @export
+setGeneric(name="add.compounds",
+           def=function(object, compounds, concentrations)
+           {
+             standardGeneric("add.compounds")
+           }
+)
+
+setMethod(f          = "add.compounds",
+          signature  = signature(object         = "growthSimulation",
+                                 compounds      = "character",
+                                 concentrations = "numeric"),
+          definition = function(object, compounds, concentrations) {
+
+            if(length(compounds) != length(concentrations))
+              stop("Lengths of 'compounds' and 'concentrations' differ.")
+
+            for(i in 1:length(compounds)) {
+              if(compounds[i] %in% object@environ@compounds) {
+                c_ind <- which(object@environ@compounds == compounds[i])
+                object@environ@concentrations[, c_ind] <- object@environ@concentrations[, c_ind] + concentrations[i]
+              } else {
+                object@environ@compounds      <- c(object@environ@compounds, compounds[i])
+                object@environ@concentrations <- cbind(object@environ@concentrations,
+                                                       matrix(concentrations[i], ncol = 1, nrow = object@environ@nfields))
+              }
+            }
+
+            return(object)
+          }
+)
+
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+# Plot compound distribution  #
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+
+#' @title Plot spatial distribution of compounds
+#'
+#' @description Plots the spatial distribution of compound concentrations in a heatmap.
+#'
+#' @param object S4-object of type \code{growthSimulation}.
+#' @param compounds Character string of compound ids to plot
+#' @param compound.names Character string of compound names that should be displayed as facet header instead of compound IDs from \code{compounds}.
+#' @param xlim Numeric vector of length 2 specifying the limits (left and right) for x axis; i.e. the horizontal dimension.
+#' @param ylim Numeric vector of length 2 specifying the limits (top and bottom) for y axis; i.e. the vertical dimension.
+#' @param iter Positive integer number of the simulation step/iteration to plot the distribution. Works only if the respective metabolite
+#' concentrations were prior recorded (see \code{link{run.simulation}}). If \code{NULL}, current distribution of compound concentrations.
+#'
+#' @return A ggplot object.
+#'
+#' @export
+setGeneric(name="plot.environment",
+           def=function(object, compounds, compound.names = NULL, xlim = NULL, ylim = NULL, ...)
+           {
+             standardGeneric("plot.environment")
+           }
+)
+
+setMethod(f = "plot.environment",
+          signature = signature(object = "growthSimulation",
+                                compounds = "character"),
+          definition = function(object, compounds, compound.names = NULL, xlim = NULL, ylim = NULL, iter = NULL) {
+
+            # Argument sanity check
+            if(!all(compounds %in% object@environ@compounds)) {
+              compounds <- compounds[compounds %in% object@environ@compounds]
+
+              if(length(compounds) == 0)
+                stop("Selected compound(s) not in list of variable environment compounds.")
+
+              warning("Not all selected compounds are in the list of variable environment compounds. Continuing with the rest...")
+            }
+
+            # If no limits are defined use polygon universe limits
+            if(is.null(xlim)) {
+              xlim <- c(min(object@universePolygon[,1]),
+                        max(object@universePolygon[,1]))
+            }
+            if(is.null(ylim)) {
+              ylim <- c(min(object@universePolygon[,2]),
+                        max(object@universePolygon[,2]))
+            }
+
+            # If no compound names are defined, use compound IDs instead
+            cpd_nameDT <- data.table(Compound = compounds, Compound.name = compounds)
+            if(!is.null(compound.names)) {
+              if(length(compound.names) != length(compounds)){
+                warning("Number of compound names not equal to number of compound IDs. Using compound IDs instead.")
+              } else if(any(duplicated(compound.names))) {
+                warning("Duplicate compound names. Using compound IDs instead.")
+              } else {
+                cpd_nameDT$Compound.name <- compound.names
+              }
+            }
+
+            if(is.null(iter)) {
+              envDT <- data.table(object@environ@concentrations)
+            } else {
+              # TODO: When a former simulation step is selected
+            }
+
+            names(envDT) <- object@environ@compounds
+            envDT <- envDT[, ..compounds]
+
+            envDT <- cbind(object@environ@field.pts@coords, envDT)
+            envDT <- envDT[z == 0] # baseplane
+            envDT <- melt(envDT, id.vars = c("x","y"), variable.name = "Compound", value.name = "mM")
+            envDT <- merge(envDT, cpd_nameDT)
+
+            # get expansion factor so scale bar is not to close to panel margins
+            x_exp_fac <- (xlim[2]-xlim[1]) * 0.05
+            y_exp_fac <- (ylim[2]-ylim[1]) * 0.05
+
+            # get scale bar length to span approx 10% of x-axis
+            x_span <- xlim[2]-xlim[1]
+            x_magn <- floor(log(x_span, base = 10))
+            bar_wd <- 10^x_magn / 10
+            bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd * 2.5, bar_wd) # e.g. 10 -> 25
+            bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd / 2.5 * 5, bar_wd) # e.g. 10 -> 50
+
+            p <- ggplot(envDT, aes(x,y, fill = mM)) +
+              #geom_hex(aes(colour = mM), stat = "identity") +
+              geom_bin2d(aes(colour = mM), stat = "identity") +
+              coord_equal(xlim = xlim, ylim = ylim) +
+              geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
+                               y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = "white") +
+              annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
+                       color = "white", hjust = 0.5, vjust = -1, size = 2.5) +
+              theme_bw() +
+              scale_fill_viridis_c() + scale_color_viridis_c() + facet_wrap("Compound.name") +
+              scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
+              theme(legend.position = "bottom",
+                    axis.line.x.top = element_line(color = "white", size = 1.5, lineend = "round"),
+                    axis.line.x.bottom = element_line(color = "white", size = 1.5, lineend = "round"),
+                    axis.line.y.left = element_line(color = "white", size = 1.5, lineend = "round"),
+                    axis.line.y.right = element_line(color = "white", size = 1.5, lineend = "round"),
+                    panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(),
+                    panel.background = element_blank(), axis.line = element_blank(),
+                    axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank(),
+                    strip.background = element_blank(), strip.text = element_text(face = "bold", color = "black"))
+
+
+            return(p)
+            #return(plot.environment(object@environ, compounds, compound.names = compound.names, xlim = xlim, ylim = ylim))
+
+          }
+)
