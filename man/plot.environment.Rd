@@ -18,7 +18,7 @@ plot.environment(
 
 \item{compounds}{Character string of compound ids to plot}
 
-\item{compound.names}{Character string of compound names that should be displayed as facet header instead of compound IDs from \code{compounds}.}
+\item{compound.names}{Character string of compound names that should be displayed as facet header instead of compound names from the simulation object.}
 
 \item{xlim}{Numeric vector of length 2 specifying the limits (left and right) for x axis; i.e. the horizontal dimension.}
 

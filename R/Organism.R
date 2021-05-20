@@ -37,6 +37,10 @@ setMethod("initialize", "Organism",
             .Object@vmax <- vmax
             .Object@scavengeDist <- scavengeDist
 
+            # Rm exchange reaction for D-lactate if L-lactate is also present
+            if(all(c("EX_cpd00221_e0","EX_cpd00159_e0") %in% mod@react_id))
+              mod <- rmReact(mod, react = "EX_cpd00221_e0")
+
             # Network
             if(rm.deadends) {
               der <- deadEndMetabolites(mod)$der

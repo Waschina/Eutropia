@@ -1,7 +1,7 @@
 Package: EcoAgents
 Type: Package
 Title: Agent-based modelling of microbial communities in time and continuous µ-meter-scale space
-Version: 0.1.0
+Version: 0.1.1
 Author: Silvio Waschina
 Maintainer: Silvio Waschina <s.waschina@nutrinf.uni-kiel.de>
 Description: More about what it does (maybe more than one line)
@@ -16,7 +16,3 @@ Suggests:
     rmarkdown
 VignetteBuilder: knitr
 RoxygenNote: 7.1.1
-LinkingTo: 
-    Rcpp, RcppArmadillo, RcppEigen
-Imports: 
-    Rcpp, RcppArmadillo, RcppEigen

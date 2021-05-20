@@ -4,7 +4,13 @@
 \alias{add.compounds}
 \title{Add compounds to the growth environment}
 \usage{
-add.compounds(object, compounds, concentrations)
+add.compounds(
+  object,
+  compounds,
+  concentrations,
+  compound.names = NULL,
+  is.constant = NULL
+)
 }
 \arguments{
 \item{object}{S4-object of type \code{growthSimulation}.}
@@ -12,6 +18,10 @@ add.compounds(object, compounds, concentrations)
 \item{compounds}{Character vector with the compound IDs of substances to add to the environment. Compound IDs should correspond to the models' exchange reactions IDs ("EX_[cpdid]"), without the "EX_" prefix.}
 
 \item{concentrations}{Numeric vector with the concentrations of the compounds from \code{compounds} in the same order. Values in mM.}
+
+\item{compound.names}{Character vector with the compound names.}
+
+\item{is.constant}{Logical vector that indicates if the compound should remain constant over time despite of potential uptake or production of cells.}
 }
 \value{
 Return a S4-object of type \code{growthSimulation}.
@@ -20,7 +30,8 @@ Return a S4-object of type \code{growthSimulation}.
 The function can be used to add substances to the growth environment by providing concentrations in mM.
 }
 \details{
-Compound concentration are equally distributed across the whole growth environment. More options are planned.
+Compound concentration are equally distributed across the whole growth environment.
+If compound is already present, old and new concentrations are added. More options are planned.
 }
 \examples{
 sim <- init.simulation(cbind(c(-100, -100, 100, 100), c(-100, 100, 100, -100)),
@@ -29,6 +40,9 @@ sim <- init.simulation(cbind(c(-100, -100, 100, 100), c(-100, 100, 100, -100)),
 sim <- add.compounds(sim,
                      compounds = c("cpd00027_e0","cpd00029_e0","cpd00047_e0",
                                    "cpd00159_e0","cpd00211_e0"),
-                     concentrations = c(50,0,0,0,0))
+                     concentrations = c(50,0,0,0,0),
+                     compound.names = c("D-Glucose","Acetate","Formate",
+                                        "L-Lactate","Butyrate"),
+                     is.constant = c(F, F, F, F, F))
 
 }

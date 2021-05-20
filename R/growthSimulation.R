@@ -270,6 +270,24 @@ setMethod(f          = "add.organism",
                                    parent = NA_integer_)
             object@cellDT <- rbind(object@cellDT, newcells)
 
+            # add compounds, whose exchange reactions hab a LB < 0, to environment
+            mod <- object@models[[name]]@mod
+
+            dt_exr <- data.table(id = mod@react_id,
+                                 lb = mod@lowbnd,
+                                 name = mod@react_name)
+            dt_exr <- dt_exr[grepl("^EX_", id)]
+            dt_exr[, id := gsub("^EX_","",id)]
+            dt_exr <- dt_exr[id != "cpd11416_c0"]
+            dt_exr[, name := gsub("-e0-e0 Exchange","",name)]
+            dt_exr[, name := gsub("-e0 Exchange","",name)]
+            dt_exr[, name := gsub(" Exchange","",name)]
+
+            object <- add.compounds(object,
+                                    compounds = dt_exr$id,
+                                    concentrations = rep(0, nrow(dt_exr)),
+                                    compound.names = dt_exr$name,
+                                    is.constant = rep(FALSE, nrow(dt_exr)))
 
             return(object)
           }
@@ -413,6 +431,131 @@ setMethod(f = "plot.cells",
           }
 )
 
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+# Plot growth curves      #
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+
+#' @title Plot growth curves
+#'
+#' @description Plot population growth over time
+#'
+#' @param object S4-object of type \code{growthSimulation}.
+#' @param tlim Numeric vector of length 2, specifying the x-range (Time) to be displayed.
+#'
+#' @return A ggplot object.
+#'
+#' @export
+setGeneric(name="plot.growth",
+           def=function(object, tlim = NULL, ...)
+           {
+             standardGeneric("plot.growth")
+           }
+)
+
+
+setMethod(f = "plot.growth",
+          signature = signature(object = "growthSimulation"),
+          definition = function(object, tlim = NULL) {
+
+            # Sanity checks
+            if(object@n_rounds < 2)
+              stop("Simulation did not yet run for at least 2 iterations. No growth can be plotted.")
+            if(is.null(object@history[[1]]$cells))
+              stop("No cell/population data has been recorded.")
+
+            dt_cellsg <- rbindlist(lapply(object@history, function(x) x$cells), idcol = "iteration")
+            dt_cellsg <- dt_cellsg[, .(mass = sum(mass)), by = .(iteration, type)]
+            dt_cellsg[, time := iteration * object@deltaTime]
+
+            p_growth <- ggplot(dt_cellsg, aes(time, mass, col = type, group = type)) +
+              geom_line() +
+              #geom_point(cex = 0.5) +
+              scale_color_brewer(palette = "Set1") +
+              labs(x = "Time [hr]", y = "Mass [pg]",col = "Organism") +
+              scale_x_continuous(expand = c(0,0)) +
+              theme_bw() +
+              theme(panel.grid = element_blank(),
+                    panel.border = element_blank(),
+                    axis.title = element_text(color = "black"),
+                    axis.text = element_text(color = "black"),
+                    axis.line = element_line(color = "black"),
+                    legend.text = element_text(color = "black", face = "italic"))
+
+            return(p_growth)
+          }
+)
+
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+# Plot compound time curves #
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+
+#' @title Plot compound time curves
+#'
+#' @description Plot concentrations of metabolites over time
+#'
+#' @param object S4-object of type \code{growthSimulation}.
+#' @param compounds Vector of compound IDs whose concentration is plotted. If no IDs are provided,
+#' the top variable (SD) compounds are plotted (max. 8 compounds).
+#' @param tlim Numeric vector of length 2, specifying the x-range (Time) to be displayed.
+#'
+#' @return A ggplot object.
+#'
+#' @export
+setGeneric(name="plot.compounds",
+           def=function(object, compounds = NULL, tlim = NULL, ...)
+           {
+             standardGeneric("plot.compounds")
+           }
+)
+
+
+setMethod(f = "plot.compounds",
+          signature = signature(object = "growthSimulation"),
+          definition = function(object, compounds = NULL, tlim = NULL) {
+
+            # Sanity checks
+            if(object@n_rounds < 2)
+              stop("Simulation did not yet run for at least 2 iterations. No growth can be plotted.")
+            if(is.null(object@history[[1]]$global_compounds))
+              stop("No compound concentration data has been recorded.")
+
+            dt_cpdg <- rbindlist(lapply(sim@history, function(x) x$global_compounds), idcol = "iteration")
+            dt_cpdg[, time := iteration * sim@deltaTime]
+
+
+            if(is.null(compounds)) {
+              # identify most variable compounds
+              rel_cpds <- dt_cpdg[, sd(global_concentration), by = cpd.id][V1 > 1e-4][order(-V1), cpd.id]
+              rel_cpds <- rel_cpds[1:min(c(8, length(rel_cpds)))]
+            } else {
+              # check if slected compounds are part of models/simulation
+              compounds <- compounds[compounds %in% object@environ@compounds]
+              if(length(compounds) == 0)
+                stop("Selected compounds not part of the simulation.")
+              rel_cpds <- compounds
+            }
+
+            # filter to relevant cpds
+            dt_cpdg <- dt_cpdg[cpd.id %in% rel_cpds]
+
+            p_cpdth <- ggplot(dt_cpdg, aes(time, global_concentration, col = cpd.name, group = cpd.name)) +
+              geom_line() +
+              #geom_point(cex = 0.5) +
+              scale_color_brewer(palette = "Set1") +
+              labs(x = "Time [hr]", y = "Concentration [mM]",col = "Compound") +
+              scale_x_continuous(expand = c(0,0)) +
+              theme_bw() +
+              theme(panel.grid = element_blank(),
+                    panel.border = element_blank(),
+                    axis.title = element_text(color = "black"),
+                    axis.text = element_text(color = "black"),
+                    axis.line = element_line(color = "black"),
+                    legend.text = element_text(color = "black"))
+
+            return(p_cpdth)
+
+          }
+)
 
 #' @title Add compounds to the growth environment
 #'
@@ -421,8 +564,11 @@ setMethod(f = "plot.cells",
 #' @param object S4-object of type \code{growthSimulation}.
 #' @param compounds Character vector with the compound IDs of substances to add to the environment. Compound IDs should correspond to the models' exchange reactions IDs ("EX_[cpdid]"), without the "EX_" prefix.
 #' @param concentrations Numeric vector with the concentrations of the compounds from \code{compounds} in the same order. Values in mM.
+#' @param compound.names Character vector with the compound names.
+#' @param is.constant Logical vector that indicates if the compound should remain constant over time despite of potential uptake or production of cells.
 #'
-#' @details Compound concentration are equally distributed across the whole growth environment. More options are planned.
+#' @details Compound concentration are equally distributed across the whole growth environment.
+#' If compound is already present, old and new concentrations are added. More options are planned.
 #'
 #' @return Return a S4-object of type \code{growthSimulation}.
 #'
@@ -433,11 +579,15 @@ setMethod(f = "plot.cells",
 #' sim <- add.compounds(sim,
 #'                      compounds = c("cpd00027_e0","cpd00029_e0","cpd00047_e0",
 #'                                    "cpd00159_e0","cpd00211_e0"),
-#'                      concentrations = c(50,0,0,0,0))
+#'                      concentrations = c(50,0,0,0,0),
+#'                      compound.names = c("D-Glucose","Acetate","Formate",
+#'                                         "L-Lactate","Butyrate"),
+#'                      is.constant = c(F, F, F, F, F))
 #'
 #' @export
 setGeneric(name="add.compounds",
-           def=function(object, compounds, concentrations)
+           def=function(object, compounds, concentrations,
+                        compound.names = NULL, is.constant = NULL)
            {
              standardGeneric("add.compounds")
            }
@@ -446,20 +596,64 @@ setGeneric(name="add.compounds",
 setMethod(f          = "add.compounds",
           signature  = signature(object         = "growthSimulation",
                                  compounds      = "character",
-                                 concentrations = "numeric"),
-          definition = function(object, compounds, concentrations) {
+                                 concentrations = "numeric",
+                                 compound.names = "character",
+                                 is.constant    = "logical"),
+          definition = function(object, compounds, concentrations,
+                                compound.names = NULL,
+                                is.constant = NULL) {
 
             if(length(compounds) != length(concentrations))
               stop("Lengths of 'compounds' and 'concentrations' differ.")
 
+            # make compounds non-constant if nothing else is specified
+            if(is.null(is.constant)) {
+              is.constant <- rep(F, length(compounds))
+            }
+
+            # is.constant should be NULL (see above) or of lenfth 1 or n (nr. of compounds)
+            if(length(is.constant) != 1 & length(is.constant) != length(compounds)) {
+              stop("Length of 'is.constant' is not 1 or the same length als 'compounds'")
+            }
+
+            # extent is.constant vector if only one value
+            if(length(is.constant) == 1) {
+              is.constant <- rep(is.constant, length(compounds))
+            }
+
+            # if no names are supplied -> NA
+            if(is.null(compound.names)) {
+              compound.names <- rep(NA_character_, length(compounds))
+            }
+
+            # if length of names is unequal the length of ids -> something's odd
+            if(length(compound.names) != length(compounds)) {
+              stop("Length of 'compound.names' is not the same length als 'compounds'")
+            }
+
             for(i in 1:length(compounds)) {
+              # Metabolite is already present in environment
               if(compounds[i] %in% object@environ@compounds) {
                 c_ind <- which(object@environ@compounds == compounds[i])
                 object@environ@concentrations[, c_ind] <- object@environ@concentrations[, c_ind] + concentrations[i]
+                object@environ@conc.isConstant[c_ind]  <- is.constant[i]
+                if(!is.na(compound.names[i]))
+                  object@environ@compound.names[c_ind] <- compound.names[i]
+
+              # Metabolite is new
               } else {
-                object@environ@compounds      <- c(object@environ@compounds, compounds[i])
-                object@environ@concentrations <- cbind(object@environ@concentrations,
+                object@environ@compounds       <- c(object@environ@compounds, compounds[i])
+                object@environ@concentrations  <- cbind(object@environ@concentrations,
                                                        matrix(concentrations[i], ncol = 1, nrow = object@environ@nfields))
+                object@environ@conc.isConstant <- c(object@environ@conc.isConstant, is.constant[i])
+                if(!is.na(compound.names[i])) {
+                  if(compound.names[i] %in% object@environ@compound.names) {
+                    warning(paste0("Compound with name '",compound.names[i],"' already exists. Replacing with '",compounds[i],"'."))
+                  }
+                  object@environ@compound.names <- c(object@environ@compound.names, compound.names[i])
+                } else {
+                  object@environ@compound.names <- c(object@environ@compound.names, compounds[i])
+                }
               }
             }
 
@@ -477,7 +671,7 @@ setMethod(f          = "add.compounds",
 #'
 #' @param object S4-object of type \code{growthSimulation}.
 #' @param compounds Character string of compound ids to plot
-#' @param compound.names Character string of compound names that should be displayed as facet header instead of compound IDs from \code{compounds}.
+#' @param compound.names Character string of compound names that should be displayed as facet header instead of compound names from the simulation object.
 #' @param xlim Numeric vector of length 2 specifying the limits (left and right) for x axis; i.e. the horizontal dimension.
 #' @param ylim Numeric vector of length 2 specifying the limits (top and bottom) for y axis; i.e. the vertical dimension.
 #' @param iter Positive integer number of the simulation step/iteration to plot the distribution. Works only if the respective metabolite
@@ -518,13 +712,14 @@ setMethod(f = "plot.environment",
                         max(object@universePolygon[,2]))
             }
 
-            # If no compound names are defined, use compound IDs instead
-            cpd_nameDT <- data.table(Compound = compounds, Compound.name = compounds)
+            # If no compound names are defined, use compound origunal compound names instead
+            cpd_nameDT <- data.table(Compound = compounds,
+                                     Compound.name = object@environ@compound.names[match(compounds, object@environ@compounds)])
             if(!is.null(compound.names)) {
               if(length(compound.names) != length(compounds)){
-                warning("Number of compound names not equal to number of compound IDs. Using compound IDs instead.")
+                warning("Number of compound names not equal to number of compound IDs. Using original compound names instead.")
               } else if(any(duplicated(compound.names))) {
-                warning("Duplicate compound names. Using compound IDs instead.")
+                warning("Duplicate compound names. Using original compound names instead.")
               } else {
                 cpd_nameDT$Compound.name <- compound.names
               }

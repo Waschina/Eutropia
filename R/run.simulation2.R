@@ -18,7 +18,8 @@
 #'
 #' @export
 setGeneric(name="run.simulation",
-           def=function(object, niter, verbose = 1, lim_cells = 1e5, lim_time = 300, record = NULL, n.cores = NULL, ...)
+           def=function(object, niter, verbose = 1, lim_cells = 1e5, lim_time = 300,
+                        record = c("cells","global_compounds"), n.cores = NULL, ...)
            {
              standardGeneric("run.simulation")
            },
@@ -28,7 +29,8 @@ setGeneric(name="run.simulation",
 setMethod(f          = "run.simulation",
           signature  = signature(object    = "growthSimulation",
                                  niter     = "numeric"),
-          definition = function(object, niter, verbose = 1, lim_cells = 1e5, lim_time = 300, record = NULL, n.cores = NULL) {
+          definition = function(object, niter, verbose = 1, lim_cells = 1e5, lim_time = 300,
+                                record = c("cells","global_compounds"), n.cores = NULL) {
 
             # initialise multi core processing (with a copy of each model in warm for each parallel fork)
             cmad <- unlist(lapply(object@models, function(x) x@cellMassAtDivision))
@@ -150,7 +152,10 @@ setMethod(f          = "run.simulation",
                 cat("... update environment\n", sep ='')
               I <- rbindlist(lapply(agFBA_results, function(x) rbindlist(list(x$I.up, x$I.pd))))
               I <- I[, .(concChange = sum(concChange)), by = c("field.id", "concMatInd")]
+              ind_var <- which(!object@environ@conc.isConstant)
+              I <- I[concMatInd %in% ind_var]
               I <- as.matrix(I)
+              #print(I)
 
               object@environ@concentrations[I[,1:2]] <- object@environ@concentrations[I[,1:2]] + I[,3]
               object@environ@concentrations[I[,1:2]] <- ifelse(object@environ@concentrations[I[,1:2]] < 1e-7, 0, object@environ@concentrations[I[,1:2]])
@@ -250,9 +255,18 @@ setMethod(f          = "run.simulation",
                   object@history[[simRound]]$cells <- copy(object@cellDT)
                 }
 
-                # specific compound contentrations per grids
+                # global metabolite concentrations (only variable)
+                if("global_compounds" %in% record) {
+                  ind_var <- !object@environ@conc.isConstant
+                  dt_conc_tmp <- data.table(cpd.id = object@environ@compounds[ind_var],
+                                            cpd.name = object@environ@compound.names[ind_var],
+                                            global_concentration = apply(object@environ@concentrations[,ind_var],2,mean))
+                  object@history[[simRound]]$global_compounds <- dt_conc_tmp
+                }
+
+                # specific compound concentrations per grids
                 if(any(grepl("^compound_", record)) | ("compounds" %in% record)) {
-                  COI <- record[grepl("^compound_", record)] # metabolies of interest
+                  COI <- record[grepl("^compound_", record)] # metabolites of interest
                   COI <- gsub("^compound_","",COI)
                   COI <- COI[COI %in% object@environ@compounds]
                   if("compounds" %in% record)
@@ -273,20 +287,18 @@ setMethod(f          = "run.simulation",
               }
 
               # small cell summary
-              if(verbose > 1) {
+              if(verbose > 0) {
                 cellsum <- copy(object@cellDT[,.(mass = round(sum(mass), digits = 2)), by = type])
                 cellsum[, tmp.sum := paste0(type,"(",mass,")")]
                 cellsum <- paste(cellsum$tmp.sum, collapse = " ")
-                cat("    ",cellsum,"\n", sep ='')
+                cat("           ",cellsum,"\n", sep ='')
               }
 
 
               j <- j + 1
-              #ram_usage <<- c(ram_usage, mem_used())
+
               object@n_rounds <- object@n_rounds + 1
-              #rm(agFBA_results)
-              #gc()
-              #clusterApply(cl, 1:n.cores, gc)
+
             }
 
             # delete cplex problem object to free memory
@@ -469,7 +481,7 @@ agentFBA_ex <- function(x) {
 
   rm(ccbnds)
   rm(sol.fba)
-  #gc() # das bremst, passt aber auf, dass kein RAM leakt
+
   return(list(mu        = mu,
               fba.stat  = stat,
               cMass_new = cMass_new,

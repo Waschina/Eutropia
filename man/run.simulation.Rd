@@ -10,7 +10,7 @@ run.simulation(
   verbose = 1,
   lim_cells = 1e+05,
   lim_time = 300,
-  record = NULL,
+  record = c("cells", "global_compounds"),
   n.cores = NULL,
   ...
 )

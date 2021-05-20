@@ -1,14 +1,16 @@
 setClass("growthEnvironment",
 
          slots = c(
-           field.pts      = "SpatialPoints",
-           compounds      = "character",
-           concentrations = "matrix",
-           fieldLayers    = "integer",
-           nfields        = "integer",
-           fieldSize      = "numeric",
-           fieldVol       = "numeric",
-           DCM            = "Matrix"
+           field.pts       = "SpatialPoints",
+           compounds       = "character",
+           compound.names  = "character",
+           concentrations  = "matrix",
+           conc.isConstant = "logical",
+           fieldLayers     = "integer",
+           nfields         = "integer",
+           fieldSize       = "numeric",
+           fieldVol        = "numeric",
+           DCM             = "Matrix"
          )
 )
 
@@ -27,7 +29,7 @@ setMethod("initialize", "growthEnvironment",
             # Important: Distance of field centers of neighboring fields: 2*H = 1*R_i = 2 * a * sqrt(2/3)
             # equal double the distance from center to plane faces
 
-            # Make base layer of field (Rhombic dodecahedrons)
+            # Make base layer of fields (Rhombic dodecahedrons)
             area <- Polygon(polygon.coords)
             area <- Polygons(list(area), "s1")
 
@@ -67,13 +69,15 @@ setMethod("initialize", "growthEnvironment",
 
             nfields <- nrow(field.pts@coords)
 
-            .Object@field.pts      <- field.pts
-            .Object@compounds      <- character(0)
-            .Object@concentrations <- matrix(ncol = 0, nrow = nfields)
-            .Object@fieldLayers    <- field.layers
-            .Object@nfields        <- nfields
-            .Object@fieldSize      <- field.size
-            .Object@fieldVol       <- fieldVol
+            .Object@field.pts       <- field.pts
+            .Object@compounds       <- character(0)
+            .Object@compound.names  <- character(0)
+            .Object@concentrations  <- matrix(ncol = 0, nrow = nfields)
+            .Object@conc.isConstant <- logical(0)
+            .Object@fieldLayers     <- field.layers
+            .Object@nfields         <- nfields
+            .Object@fieldSize       <- field.size
+            .Object@fieldVol        <- fieldVol
 
             .Object@DCM <- build.DCM(field.pts, field.size,  alpha = diffusion.alpha) # Diffusion coefficient matrix
 
@@ -219,11 +223,21 @@ setMethod(f          = "diffuse.compounds",
                                  n_iter         = "numeric"),
           definition = function(object, n_iter) {
 
-            conctmp <- object@concentrations
+            ind_variable <- which(apply(object@concentrations,2,sd) > 0)
+
+            # no variable compounds -> no need for diffusion
+            if(length(ind_variable) == 0)
+              return(object)
+
+            conctmp <- object@concentrations[,ind_variable]
             for(i in 1:n_iter)
               conctmp <- object@DCM %*% conctmp
 
-            object@concentrations <- as.matrix(conctmp)
+            conctmp <- as.matrix(conctmp)
+
+            for(i in 1:ncol(conctmp)) {
+              object@concentrations[,ind_variable[i]] <- conctmp[,i]
+            }
 
 
             # with RccpArmadillo
@@ -232,7 +246,7 @@ setMethod(f          = "diffuse.compounds",
             #conctmp <- diffuse_arma(object@DCM, conctmp, n_iter)
             #conctmp <- diffuse_eigen(object@DCM, conctmp, n_iter)
 
-            object@concentrations <- as.matrix(conctmp)
+            #object@concentrations <- as.matrix(conctmp)
 
             return(object)
           }
