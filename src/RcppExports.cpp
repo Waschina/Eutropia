@@ -2,19 +2,21 @@
 // Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 #include <RcppArmadillo.h>
+#include <RcppEigen.h>
 #include <Rcpp.h>
 
 using namespace Rcpp;
 
-// multiply
-arma::mat multiply(arma::sp_mat A, arma::mat B);
-RcppExport SEXP _EcoAgents_multiply(SEXP ASEXP, SEXP BSEXP) {
+// diffuse_arma
+arma::sp_mat diffuse_arma(arma::sp_mat A, arma::sp_mat B, int niter);
+RcppExport SEXP _EcoAgents_diffuse_arma(SEXP ASEXP, SEXP BSEXP, SEXP niterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::sp_mat >::type A(ASEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type B(BSEXP);
-    rcpp_result_gen = Rcpp::wrap(multiply(A, B));
+    Rcpp::traits::input_parameter< arma::sp_mat >::type B(BSEXP);
+    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
+    rcpp_result_gen = Rcpp::wrap(diffuse_arma(A, B, niter));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -29,22 +31,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// trace_
-int trace_(arma::sp_mat X);
-RcppExport SEXP _EcoAgents_trace_(SEXP XSEXP) {
+// diffuse_eigen
+Eigen::SparseMatrix<double> diffuse_eigen(Eigen::SparseMatrix<double>& A, Eigen::SparseMatrix<double>& B, int niter);
+RcppExport SEXP _EcoAgents_diffuse_eigen(SEXP ASEXP, SEXP BSEXP, SEXP niterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::sp_mat >::type X(XSEXP);
-    rcpp_result_gen = Rcpp::wrap(trace_(X));
+    Rcpp::traits::input_parameter< Eigen::SparseMatrix<double>& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< Eigen::SparseMatrix<double>& >::type B(BSEXP);
+    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
+    rcpp_result_gen = Rcpp::wrap(diffuse_eigen(A, B, niter));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_EcoAgents_multiply", (DL_FUNC) &_EcoAgents_multiply, 2},
+    {"_EcoAgents_diffuse_arma", (DL_FUNC) &_EcoAgents_diffuse_arma, 3},
     {"_EcoAgents_trans_", (DL_FUNC) &_EcoAgents_trans_, 1},
-    {"_EcoAgents_trace_", (DL_FUNC) &_EcoAgents_trace_, 1},
+    {"_EcoAgents_diffuse_eigen", (DL_FUNC) &_EcoAgents_diffuse_eigen, 3},
     {NULL, NULL, 0}
 };
 

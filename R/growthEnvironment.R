@@ -225,10 +225,14 @@ setMethod(f          = "diffuse.compounds",
 
             object@concentrations <- as.matrix(conctmp)
 
-            # low_ind <- which(object@concentrations > 0 & object@concentrations < 1e-8, arr.ind = T) # TODO specify this in an argument / global setting
-            #
-            # if(nrow > 0)
-            #   object@concentrations[low_ind] <- 0
+
+            # with RccpArmadillo
+            #conctmp <- Matrix(object@concentrations, sparse = T)
+
+            #conctmp <- diffuse_arma(object@DCM, conctmp, n_iter)
+            #conctmp <- diffuse_eigen(object@DCM, conctmp, n_iter)
+
+            object@concentrations <- as.matrix(conctmp)
 
             return(object)
           }

@@ -17,6 +17,6 @@ Suggests:
 VignetteBuilder: knitr
 RoxygenNote: 7.1.1
 LinkingTo: 
-    Rcpp, RcppArmadillo
+    Rcpp, RcppArmadillo, RcppEigen
 Imports: 
-    Rcpp, RcppArmadillo
+    Rcpp, RcppArmadillo, RcppEigen
