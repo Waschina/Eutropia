@@ -10,8 +10,8 @@ setGeneric(name="adjust.uptake",
            }
 )
 
-#' Adjust a model's lower bounds for exchange reactions based on compound accessibility
-#'
+# Adjust a model's lower bounds for exchange reactions based on compound accessibility
+#
 setMethod(f          = "adjust.uptake",
           signature  = signature(model          = "modelorg",
                                  cMass          = "numeric",
