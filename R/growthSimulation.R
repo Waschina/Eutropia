@@ -519,8 +519,8 @@ setMethod(f = "plot.compounds",
             if(is.null(object@history[[1]]$global_compounds))
               stop("No compound concentration data has been recorded.")
 
-            dt_cpdg <- rbindlist(lapply(sim@history, function(x) x$global_compounds), idcol = "iteration")
-            dt_cpdg[, time := iteration * sim@deltaTime]
+            dt_cpdg <- rbindlist(lapply(object@history, function(x) x$global_compounds), idcol = "iteration")
+            dt_cpdg[, time := iteration * object@deltaTime]
 
 
             if(is.null(compounds)) {
