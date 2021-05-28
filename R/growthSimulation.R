@@ -52,7 +52,7 @@ setClass("growthSimulation",
 #' @param gridFieldSize double. Distance between neighboring environments 3D mesh field elements (rhombic dodecahedrons) in µm.
 #' @param gridFieldLayers integer. z-dimension (height) as the number of layers of field elements.
 #' @param deltaTime double specifying the length of each time step for the simulation in hours.
-#' @param diffusion.alpha double. This number should be between 0 and 1 and specifies the rate of naive diffusion, but specifying the fraction of compound in a field that is equally distributed to the neigboring fields. Default: 12/13.
+#' @param diffusion.alpha double. This number should be between 0 and 1 and specifies the rate of naive diffusion, but specifying the fraction of compound in a field that is equally distributed to the neighboring fields. Default: 12/13.
 #' @param diffusion.niter integer. Number of diffusion steps per simulation round.
 #' @param pFBAcoeff integer. pFBA coefficient. Default: 1e-6
 #' @param rMotion double. Maximum x- and y distance a cell can travel by means of random movement per minute. Default: 1/6 µm
