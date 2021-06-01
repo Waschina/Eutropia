@@ -25,7 +25,7 @@ init.simulation(
 
 \item{deltaTime}{double specifying the length of each time step for the simulation in hours.}
 
-\item{diffusion.alpha}{double. This number should be between 0 and 1 and specifies the rate of naive diffusion, but specifying the fraction of compound in a field that is equally distributed to the neigboring fields. Default: 12/13.}
+\item{diffusion.alpha}{double. This number should be between 0 and 1 and specifies the rate of naive diffusion, but specifying the fraction of compound in a field that is equally distributed to the neighboring fields. Default: 12/13.}
 
 \item{diffusion.niter}{integer. Number of diffusion steps per simulation round.}
 

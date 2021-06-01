@@ -10,7 +10,9 @@ setClass("growthEnvironment",
            nfields         = "integer",
            fieldSize       = "numeric",
            fieldVol        = "numeric",
-           DCM             = "Matrix"
+           DCM             = "Matrix",
+           mat.in          = "matrix",
+           mat.out         = "matrix"
          )
 )
 
@@ -80,6 +82,17 @@ setMethod("initialize", "growthEnvironment",
             .Object@fieldVol        <- fieldVol
 
             .Object@DCM <- build.DCM(field.pts, field.size,  alpha = diffusion.alpha) # Diffusion coefficient matrix
+
+            dt <- data.table(which(.Object@DCM != 0, arr.ind = T))
+            setnames(dt, new = c("from","to"))
+            setkey(dt, "to")
+            dt[, n_neighbors := .N, by = from]
+
+            mat.in  <- as.matrix(dt[from != to, .(from, to)])
+            mat.out <- as.matrix(dt[from == to, .(from, n_neighbors)])
+
+            .Object@mat.in  <- mat.in
+            .Object@mat.out <- mat.out
 
             return(.Object)
           }
@@ -230,23 +243,20 @@ setMethod(f          = "diffuse.compounds",
               return(object)
 
             conctmp <- object@concentrations[,ind_variable]
-            for(i in 1:n_iter)
-              conctmp <- object@DCM %*% conctmp
 
-            conctmp <- as.matrix(conctmp)
+            # # VIA Sparse matrix multiplications
+            # for(i in 1:n_iter)
+            #   conctmp <- object@DCM %*% conctmp
+            #
+            # conctmp <- as.matrix(conctmp)
+
+            # VIA RccpArmadillo
+            conctmp <- diffChange(object@mat.in, object@mat.out, conctmp, n_iter)
+
 
             for(i in 1:ncol(conctmp)) {
               object@concentrations[,ind_variable[i]] <- conctmp[,i]
             }
-
-
-            # with RccpArmadillo
-            #conctmp <- Matrix(object@concentrations, sparse = T)
-
-            #conctmp <- diffuse_arma(object@DCM, conctmp, n_iter)
-            #conctmp <- diffuse_eigen(object@DCM, conctmp, n_iter)
-
-            #object@concentrations <- as.matrix(conctmp)
 
             return(object)
           }
