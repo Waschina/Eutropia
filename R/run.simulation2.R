@@ -156,12 +156,11 @@ setMethod(f          = "run.simulation",
               I <- I[concMatInd %in% ind_var]
               I <- as.matrix(I)
 
-              I[,3] <- ifelse(is.na(I[,3]), 0, I[,3]) # TODO: Check where NA could come from
+              I[,3] <- ifelse(is.na(I[,3]), 0, I[,3]) # TODO: Check where NA originate come from
               #print(I)
 
               object@environ@concentrations[I[,1:2]] <- object@environ@concentrations[I[,1:2]] + I[,3]
               object@environ@concentrations[I[,1:2]] <- ifelse(object@environ@concentrations[I[,1:2]] < 1e-7, 0, object@environ@concentrations[I[,1:2]])
-              #object@environ@concentrations[I[,1:2]] <- ifelse(is.na(object@environ@concentrations[I[,1:2]]), 0, object@environ@concentrations[I[,1:2]])
 
               # - - - - - - - - - - - - #
               # (3) compound diffusion  #

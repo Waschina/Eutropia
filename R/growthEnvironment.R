@@ -10,7 +10,6 @@ setClass("growthEnvironment",
            nfields         = "integer",
            fieldSize       = "numeric",
            fieldVol        = "numeric",
-           DCM             = "Matrix",
            mat.in          = "matrix",
            mat.out         = "matrix"
          )
@@ -81,9 +80,9 @@ setMethod("initialize", "growthEnvironment",
             .Object@fieldSize       <- field.size
             .Object@fieldVol        <- fieldVol
 
-            .Object@DCM <- build.DCM(field.pts, field.size,  alpha = diffusion.alpha) # Diffusion coefficient matrix
+            DCM <- build.DCM(field.pts, field.size,  alpha = diffusion.alpha) # Diffusion coefficient matrix
 
-            dt <- data.table(which(.Object@DCM != 0, arr.ind = T))
+            dt <- data.table(which(DCM != 0, arr.ind = T))
             setnames(dt, new = c("from","to"))
             setkey(dt, "to")
             dt[, n_neighbors := .N, by = from]

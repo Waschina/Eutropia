@@ -52,7 +52,7 @@ setClass("growthSimulation",
 #' @param gridFieldSize double. Distance between neighboring environments 3D mesh field elements (rhombic dodecahedrons) in µm.
 #' @param gridFieldLayers integer. z-dimension (height) as the number of layers of field elements.
 #' @param deltaTime double specifying the length of each time step for the simulation in hours.
-#' @param diffusion.alpha double. This number should be between 0 and 1 and specifies the rate of naive diffusion, but specifying the fraction of compound in a field that is equally distributed to the neighboring fields. Default: 12/13.
+#' @param diffusion.alpha Deprecated. Please do not use/change. Old docs: double. This number should be between 0 and 1 and specifies the rate of naive diffusion, but specifying the fraction of compound in a field that is equally distributed to the neighboring fields. Default: 12/13.
 #' @param diffusion.niter integer. Number of diffusion steps per simulation round.
 #' @param pFBAcoeff integer. pFBA coefficient. Default: 1e-6
 #' @param rMotion double. Maximum x- and y distance a cell can travel by means of random movement per minute. Default: 1/6 µm
@@ -68,7 +68,7 @@ setGeneric(name="init.simulation",
                         gridFieldSize = 1,
                         gridFieldLayers = 3,
                         deltaTime = 1/6,
-                        diffusion.alpha = 6/7,
+                        diffusion.alpha = 12/13,
                         diffusion.niter = 60,
                         pFBAcoeff = 1e-6,
                         rMotion = 1/6, ...)
@@ -260,7 +260,6 @@ setMethod(f          = "add.organism",
 
             }
 
-            # add cells to cell info table
             newcells <- data.table(cell = (1:ncells)+nrow(object@cellDT),
                                    type = name,
                                    x = coords[,1], y = coords[,2],
@@ -268,9 +267,43 @@ setMethod(f          = "add.organism",
                                    mass = cellMassInit,
                                    size = cellDiameter,
                                    parent = NA_integer_)
+
+            # making sure cells are placed within the universe polygon (trapping cells)
+            # oder: "Schäfchen zurück ins Gehege holen"
+            sim_addorg <- tbl_graph(nodes = newcells, directed = F, node_key = "cell") %>%
+              simulate(setup = predefined_genesis(x = newcells$x,
+                                                  y = newcells$y,
+                                                  x_vel = newcells$x.vel,
+                                                  y_vel = newcells$y.vel)) %>%
+              # wield(collision_force, radius = newcells$size/2, n_iter = 50, strength = 0.7) %>%
+              wield(trap_force, polygon = object@universePolygon, strength = 0.7,
+                    min_dist = 5, distance_falloff = 2) %>%
+              impose(velocity_constraint,
+                     vmax = rep(1, nrow(newcells))) %>%
+              impose(polygon_constraint,
+                     polygon = object@universePolygon)
+
+            keepJittering <- T
+            tmp_currentpos <- c(newcells$x, newcells$y)
+            while(keepJittering) {
+              sim_addorg <- evolve(sim_addorg, steps = 10)
+              if(all(tmp_currentpos == c(sim_addorg$position[,1],sim_addorg$position[,2]))) {
+                keepJittering <- F
+              } else {
+                # handbreak...
+                sim_addorg$velocity[,1] <- sim_addorg$velocity[,1]*0
+                sim_addorg$velocity[,2] <- sim_addorg$velocity[,2]*0
+                tmp_currentpos <- c(sim_addorg$position[,1],sim_addorg$position[,2])
+              }
+            }
+
+            newcells$x <- sim_addorg$position[,1]
+            newcells$y <- sim_addorg$position[,2]
+
+            # add cells to cell info table
             object@cellDT <- rbind(object@cellDT, newcells)
 
-            # add compounds, whose exchange reactions hab a LB < 0, to environment
+            # add compounds, for which there are exchange reactions in at least one model
             mod <- object@models[[name]]@mod
 
             dt_exr <- data.table(id = mod@react_id,
@@ -394,8 +427,13 @@ setMethod(f = "plot.cells",
             bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd * 2.5, bar_wd) # e.g. 10 -> 25
             bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd / 2.5 * 5, bar_wd) # e.g. 10 -> 50
 
-            p <- ggplot(cellposDT, aes(x0 = x,y0 = y, r = size/2, fill = type, col = type)) +
-              geom_circle(alpha = 0.3, show.legend = T, key_glyph = draw_key_point) +
+            # get coordinated to draw growth polygon fences
+            kidt <- data.table(object@universePolygon)
+            colnames(kidt) <- c("x","y")
+
+            p <- ggplot(cellposDT, aes(x0 = x,y0 = y)) +
+              geom_polygon(data = kidt, mapping = aes(x = x, y = y), col = "#333333", fill = "black", linetype = "solid") +
+              geom_circle(aes(r = size/2, fill = type, col = type), alpha = 0.3, show.legend = T, key_glyph = draw_key_point) +
               coord_equal(xlim = xlim, ylim = ylim) +
               geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
                                y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = "white") +
@@ -415,7 +453,7 @@ setMethod(f = "plot.cells",
                     axis.text = element_blank(),
                     panel.grid = element_blank(),
                     panel.border = element_blank(),
-                    panel.background = element_rect(fill = "black"),
+                    panel.background = element_rect(fill = "white"),
                     legend.background = element_blank(),
                     legend.text = element_text(color = "black", face = "italic"),
                     legend.box.background = element_blank(),

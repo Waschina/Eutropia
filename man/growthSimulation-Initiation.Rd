@@ -9,7 +9,7 @@ init.simulation(
   gridFieldSize = 1,
   gridFieldLayers = 3,
   deltaTime = 1/6,
-  diffusion.alpha = 6/7,
+  diffusion.alpha = 12/13,
   diffusion.niter = 60,
   pFBAcoeff = 1e-06,
   rMotion = 1/6,
@@ -25,7 +25,7 @@ init.simulation(
 
 \item{deltaTime}{double specifying the length of each time step for the simulation in hours.}
 
-\item{diffusion.alpha}{double. This number should be between 0 and 1 and specifies the rate of naive diffusion, but specifying the fraction of compound in a field that is equally distributed to the neighboring fields. Default: 12/13.}
+\item{diffusion.alpha}{Deprecated. Please do not use/change. Old docs: double. This number should be between 0 and 1 and specifies the rate of naive diffusion, but specifying the fraction of compound in a field that is equally distributed to the neighboring fields. Default: 12/13.}
 
 \item{diffusion.niter}{integer. Number of diffusion steps per simulation round.}
 
