@@ -224,7 +224,7 @@ setMethod(f          = "build.DCM",
 # Compound diffusion   #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~#
 setGeneric(name="diffuse.compounds",
-           def=function(object, n_iter,  ...)
+           def=function(object, n_iter, cl, n.cores, ...)
            {
              standardGeneric("diffuse.compounds")
            }
@@ -233,31 +233,47 @@ setGeneric(name="diffuse.compounds",
 
 setMethod(f          = "diffuse.compounds",
           signature  = signature(object         = "growthEnvironment",
-                                 n_iter         = "numeric"),
-          definition = function(object, n_iter) {
+                                 n_iter         = "numeric",
+                                 cl             = "SOCKcluster",
+                                 n.cores        = "numeric"),
+          definition = function(object, n_iter, cl, n.cores) {
 
+            n.chunks <- n.cores
             ind_variable <- which(apply(object@concentrations,2,sd) > 0)
+
+            if(length(ind_variable) / n.chunks < 3)
+              n.chunks <- ceiling(n.chunks/2)
+
+            ind_var_chunks <- split(ind_variable,
+                                    cut(seq_along(ind_variable),
+                                        n.chunks, labels = F))
 
             # no variable compounds -> no need for diffusion
             if(length(ind_variable) == 0)
               return(object)
 
-            conctmp <- object@concentrations[,ind_variable]
-
-            # # VIA Sparse matrix multiplications
-            # for(i in 1:n_iter)
-            #   conctmp <- object@DCM %*% conctmp
-            #
-            # conctmp <- as.matrix(conctmp)
-
             # VIA RccpArmadillo
-            conctmp <- diffChange(object@mat.in, object@mat.out, conctmp, n_iter)
+            conc.list.tmp <- lapply(ind_var_chunks, function(x) {
+              list(mat.in  = object@mat.in,
+                   mat.out = object@mat.out,
+                   conc    = as.matrix(object@concentrations[,x]),
+                   n_iter  = n_iter)
+            })
+            #print(ind_var_chunks[[1]])
+            conc.list.tmp <- parLapply(cl, conc.list.tmp, indDiff_worker)
 
-
-            for(i in 1:ncol(conctmp)) {
-              object@concentrations[,ind_variable[i]] <- conctmp[,i]
+            for(k in 1:length(ind_var_chunks)) {
+              for(i in 1:ncol(conc.list.tmp[[k]])) {
+                object@concentrations[,ind_var_chunks[[k]][i]] <- conc.list.tmp[[k]][,i]
+              }
             }
 
             return(object)
           }
 )
+
+indDiff_worker <- function(x) {
+  #res <- diffChangeVec(x$mat.in, x$mat.out, x$conc, x$n_iter)
+  res <- diffChange(x$mat.in, x$mat.out, x$conc, x$n_iter)
+  return(res)
+}

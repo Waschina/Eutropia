@@ -5,3 +5,7 @@ diffChange <- function(adjmat, nneighbors, conc, niter) {
     .Call(`_EcoAgents_diffChange`, adjmat, nneighbors, conc, niter)
 }
 
+diffChangeVec <- function(adjmat, nneighbors, conc, niter) {
+    .Call(`_EcoAgents_diffChangeVec`, adjmat, nneighbors, conc, niter)
+}
+

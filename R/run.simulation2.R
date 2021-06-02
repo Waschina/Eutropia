@@ -169,7 +169,10 @@ setMethod(f          = "run.simulation",
               if(verbose > 1)
                 cat("... diffusion of compounds\n", sep ='')
 
-              object@environ <- diffuse.compounds(object@environ, n_iter = object@diffusionNIter)
+              object@environ <- diffuse.compounds(object@environ,
+                                                  n_iter = object@diffusionNIter,
+                                                  cl = cl,
+                                                  n.cores = n.cores)
 
 
               # - - - - - - - - - - - - - -#

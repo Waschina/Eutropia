@@ -759,9 +759,9 @@ setMethod(f = "plot.environment",
               annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
                        color = "white", hjust = 0.5, vjust = -1, size = 2.5) +
               theme_bw() +
-              scale_fill_viridis_c() + scale_color_viridis_c() + facet_wrap("Compound.name") +
+              scale_fill_viridis_c(guide = guide_colourbar(direction = "vertical")) + scale_color_viridis_c() + facet_wrap("Compound.name") +
               scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
-              theme(legend.position = "bottom",
+              theme(legend.position = "right",
                     axis.line.x.top = element_line(color = "white", size = 1.5, lineend = "round"),
                     axis.line.x.bottom = element_line(color = "white", size = 1.5, lineend = "round"),
                     axis.line.y.left = element_line(color = "white", size = 1.5, lineend = "round"),

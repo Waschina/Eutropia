@@ -20,9 +20,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// diffChangeVec
+arma::mat diffChangeVec(arma::mat adjmat, arma::mat nneighbors, arma::Row<double> conc, int niter);
+RcppExport SEXP _EcoAgents_diffChangeVec(SEXP adjmatSEXP, SEXP nneighborsSEXP, SEXP concSEXP, SEXP niterSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type adjmat(adjmatSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type nneighbors(nneighborsSEXP);
+    Rcpp::traits::input_parameter< arma::Row<double> >::type conc(concSEXP);
+    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
+    rcpp_result_gen = Rcpp::wrap(diffChangeVec(adjmat, nneighbors, conc, niter));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_EcoAgents_diffChange", (DL_FUNC) &_EcoAgents_diffChange, 4},
+    {"_EcoAgents_diffChangeVec", (DL_FUNC) &_EcoAgents_diffChangeVec, 4},
     {NULL, NULL, 0}
 };
 
