@@ -14,16 +14,16 @@ Structure of the S4 class \code{growthSimulation} as framework for the grwoth en
 
 \item{\code{deltaTime}}{double for length of each time step for the simulation in hours.}
 
-\item{\code{diffusionNIter}}{integer. Number of diffusion steps per simulation round.}
-
-\item{\code{rMotion}}{double. Maximum x- and y distance a cell can travel by means of random movement per simulation round.}
+\item{\code{rMotion}}{double. Maximum x- and y distance a cell can travel by means of random movement per simulation round.Unit: µm per minute.}
 
 \item{\code{models}}{list for \code{Organism} objects to represent the different strains in the simulation.}
 
 \item{\code{history}}{list with recordings of simulation status information at each simulation round.}
 
-\item{\code{universePolygon}}{Matrix specifiying the corners of the polygon that defined the growth environment boundaries. 2-dimensional: x and y.}
+\item{\code{cellDT}}{Data table with individual cell information (e.g. size, position, velocity, type)}
 
-\item{\code{environ}}{Object of S4-class \code{grwothEnvironment}, that specifies the environment mesh layout, compounds, and their concentrations.}
+\item{\code{universePolygon}}{Matrix specifying the corners of the polygon that defined the growth environment boundaries. 2-dimensional: x and y.}
+
+\item{\code{environ}}{Object of S4-class \code{growthEnvironment}, that specifies the environment mesh layout, compounds, and their concentrations.}
 }}
 

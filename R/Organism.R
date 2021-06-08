@@ -6,8 +6,10 @@ setClass("Organism",
            cellMassInit       = "numeric", # pg
            cellMassAtDivision = "numeric", # pg
            cellShape          = "character", # currently only coccus
-           vmax               = "numeric", # ?
+           vmax               = "numeric", # in µm/s
            scavengeDist       = "numeric", # in µm
+           chemotaxisCompound = "character",
+           chemotaxisStrength = "numeric", # between 1 (attracting) and -1 (repelling)
 
            # Genome-scale model for FBA / pFBA
            mod      = "modelorg"
@@ -23,6 +25,8 @@ setMethod("initialize", "Organism",
                    scavengeDist,
                    mod,
                    rm.deadends,
+                   chemotaxisCompound,
+                   chemotaxisStrength,
                    ...) {
             .Object <- callNextMethod(.Object, ...)
 
@@ -36,6 +40,8 @@ setMethod("initialize", "Organism",
             .Object@cellShape <- "coccus" # (currently only coccus possible)
             .Object@vmax <- vmax
             .Object@scavengeDist <- scavengeDist
+            .Object@chemotaxisCompound <- chemotaxisCompound
+            .Object@chemotaxisStrength <- chemotaxisStrength
 
             # Rm exchange reaction for D-lactate if L-lactate is also present
             if(all(c("EX_cpd00221_e0","EX_cpd00159_e0") %in% mod@react_id))

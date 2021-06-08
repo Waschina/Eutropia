@@ -15,11 +15,13 @@ add.organism(
   distribution.radius = NULL,
   cellDiameter = (3 * 1/(4 * pi))^(1/3) * 2,
   cellMassInit = 0.28,
-  cellMassAtDivision = 0.55,
+  cellMassAtDivision = 0.56,
   cellShape = "coccus",
-  vmax = 1,
-  scavengeDist = 5,
+  vmax = 11,
+  scavengeDist = cellDiameter * 2.5,
   rm.deadends = T,
+  chemotaxisCompound = NULL,
+  chemotaxisStrength = NULL,
   ...
 )
 }
@@ -38,21 +40,25 @@ add.organism(
 
 \item{distribution.center}{Numeric vector of length 2, which specifies the coordinates of the centre for the \code{distribution.method}.}
 
-\item{distribution.radius}{double. Spcifies the radius (in µm) in which inital cells are distributed.}
+\item{distribution.radius}{double. Spcifies the radius (in µm) in which initial cells are distributed.}
 
 \item{cellDiameter}{double. Diameter in µm of initial cells.}
 
 \item{cellMassInit}{double. Mass in pg of initial cells. Default is 0.28 pg}
 
-\item{cellMassAtDivision}{double. Cell mass at which a cell devides in two daughter cells. Default: 0.55 pg}
+\item{cellMassAtDivision}{double. Cell mass at which a cell divides into two daughter cells. Default: 0.56 pg}
 
 \item{cellShape}{character. Shape of cells. Currently only "coccus" is supported.}
 
 \item{vmax}{double. Maximum velocity of a cell in µm per minute.}
 
-\item{scavengeDist}{double. Distance in µm a cell can scavenge nutrients from its surrounding.}
+\item{scavengeDist}{double. Distance in µm a cell can scavenge nutrients from its surrounding/microoenvironment.}
 
 \item{rm.deadends}{If TRUE, dead-end metabolites and reactions are removed from the \code{model}, which reduces the computation time for FBA, but has otherwise no effect on the flux distribution solutions.}
+
+\item{chemotaxisCompound}{Character vector of compound IDs, that are signals for directed movement of the organism.}
+
+\item{chemotaxisStrength}{Numeric vector that indicated the strength of chemotaxis. Positive value for attraction; Negative for repelling effect.}
 }
 \value{
 Object of class \code{growthSimulation}.
@@ -80,5 +86,6 @@ plot.cells(sim, xlim = c(-50,50), ylim= c(-50,50))
 }
 \references{
 \url{https://bionumbers.hms.harvard.edu/bionumber.aspx?id=100008} \cr
- \url{http://book.bionumbers.org/how-big-is-an-e-coli-cell-and-what-is-its-mass/}
+ \url{http://book.bionumbers.org/how-big-is-an-e-coli-cell-and-what-is-its-mass/} \cr
+ \url{https://bionumbers.hms.harvard.edu/bionumber.aspx?id=115616&ver=0&trm=speed+e.+coli&org=}
 }

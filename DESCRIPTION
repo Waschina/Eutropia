@@ -8,6 +8,7 @@ Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
     `sudo apt install libgeos-dev`
 Depends: 
+    R (>= 4.0.1),
     data.table (>= 1.13.4),
     tidygraph (>= 1.2.0),
     sybil (>= 2.1.5),

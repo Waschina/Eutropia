@@ -4,6 +4,7 @@ setClass("growthEnvironment",
            field.pts       = "SpatialPoints",
            compounds       = "character",
            compound.names  = "character",
+           compound.D      = "numeric",
            concentrations  = "matrix",
            conc.isConstant = "logical",
            fieldLayers     = "integer",
@@ -23,7 +24,7 @@ setClass("growthEnvironment",
 #
 setMethod("initialize", "growthEnvironment",
           function(.Object,
-                   polygon.coords, field.size, diffusion.alpha, field.layers = 3, expand = field.size, ...) {
+                   polygon.coords, field.size, field.layers = 3, expand = field.size, ...) {
             .Object <- callNextMethod(.Object, ...)
 
             field.layers <- as.integer(field.layers)
@@ -73,6 +74,7 @@ setMethod("initialize", "growthEnvironment",
             .Object@field.pts       <- field.pts
             .Object@compounds       <- character(0)
             .Object@compound.names  <- character(0)
+            .Object@compound.D      <- double(0)
             .Object@concentrations  <- matrix(ncol = 0, nrow = nfields)
             .Object@conc.isConstant <- logical(0)
             .Object@fieldLayers     <- field.layers
@@ -80,7 +82,7 @@ setMethod("initialize", "growthEnvironment",
             .Object@fieldSize       <- field.size
             .Object@fieldVol        <- fieldVol
 
-            DCM <- build.DCM(field.pts, field.size,  alpha = diffusion.alpha) # Diffusion coefficient matrix
+            DCM <- build.DCM(field.pts, field.size) # Diffusion coefficient matrix
 
             dt <- data.table(which(DCM != 0, arr.ind = T))
             setnames(dt, new = c("from","to"))
@@ -99,7 +101,7 @@ setMethod("initialize", "growthEnvironment",
 
 
 setGeneric(name="build.DCM",
-           def=function(field.pts, field.size, alpha)
+           def=function(field.pts, field.size)
            {
              standardGeneric("build.DCM")
            }
@@ -108,9 +110,8 @@ setGeneric(name="build.DCM",
 # Build diffusion coefficient matirx
 setMethod(f          = "build.DCM",
           signature  = signature(field.pts      = "SpatialPoints",
-                                 field.size     = "numeric",
-                                 alpha          = "numeric"),
-          definition = function(field.pts, field.size, alpha) {
+                                 field.size     = "numeric"),
+          definition = function(field.pts, field.size) {
 
             fs <- field.size
 
@@ -206,7 +207,7 @@ setMethod(f          = "build.DCM",
             lis <- lis[!is.na(value), .(id, value)][order(id)]
 
             DCM <- Matrix(0, ncol = max(lis$id), nrow = max(lis$id), sparse = T)
-            DCM[as.matrix(lis[,1:2])] <- alpha * 1/12
+            DCM[as.matrix(lis[,1:2])] <- 12/13 * 1/12
             diag(DCM) <- 1 - Matrix::rowSums(DCM)
             DCM <- Matrix::t(DCM)
 
@@ -223,7 +224,7 @@ setMethod(f          = "build.DCM",
 # Compound diffusion   #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~#
 setGeneric(name="diffuse.compounds",
-           def=function(object, n_iter, cl, n.cores, ...)
+           def=function(object, deltaTime, cl, n.cores, ...)
            {
              standardGeneric("diffuse.compounds")
            }
@@ -232,13 +233,13 @@ setGeneric(name="diffuse.compounds",
 
 setMethod(f          = "diffuse.compounds",
           signature  = signature(object         = "growthEnvironment",
-                                 n_iter         = "numeric",
+                                 deltaTime      = "numeric",
                                  cl             = "SOCKcluster",
                                  n.cores        = "numeric"),
-          definition = function(object, n_iter, cl, n.cores) {
+          definition = function(object, deltaTime, cl, n.cores) {
 
             n.chunks <- n.cores
-            ind_variable <- which(apply(object@concentrations,2,sd) > 0)
+            ind_variable <- which(apply(object@concentrations,2,sd) > 0 & object@compound.D > 0)
 
             if(length(ind_variable) / n.chunks < 3)
               n.chunks <- ceiling(n.chunks/2)
@@ -253,10 +254,15 @@ setMethod(f          = "diffuse.compounds",
 
             # VIA RccpArmadillo
             conc.list.tmp <- lapply(ind_var_chunks, function(x) {
+
+              diff_shere_surface_area <- object@compound.D[x] * 60 * 60 * deltaTime # surface area in µm^2 after one iteration step
+              diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
+              diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
+
               list(mat.in  = object@mat.in,
                    mat.out = object@mat.out,
                    conc    = as.matrix(object@concentrations[,x]),
-                   n_iter  = n_iter)
+                   n_iter  = diffusion.niter)
             })
             #print(ind_var_chunks[[1]])
             conc.list.tmp <- parLapply(cl, conc.list.tmp, indDiff_worker)

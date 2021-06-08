@@ -9,7 +9,9 @@ add.compounds(
   compounds,
   concentrations,
   compound.names = NULL,
-  is.constant = NULL
+  is.constant = NULL,
+  compound.D = NULL,
+  ...
 )
 }
 \arguments{
@@ -22,6 +24,8 @@ add.compounds(
 \item{compound.names}{Character vector with the compound names.}
 
 \item{is.constant}{Logical vector that indicates if the compound should remain constant over time despite of potential uptake or production of cells.}
+
+\item{compound.D}{Numeric vector with the compounds' diffusion coefficients in µm^2/s. Default: 75}
 }
 \value{
 Return a S4-object of type \code{growthSimulation}.

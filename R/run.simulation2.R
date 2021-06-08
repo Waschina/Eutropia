@@ -136,12 +136,33 @@ setMethod(f          = "run.simulation",
                 res[["cMass"]]      <- object@cellDT[x, mass]
                 res[["size"]]       <- object@cellDT[x, size]
 
+                # Chemotaxis
+                res[["CT.x"]]       <- 0
+                res[["CT.y"]]       <- 0
+                ic_x <- object@cellDT[x,x]
+                ic_y <- object@cellDT[x,y]
+                for(icpd in object@models[[object@cellDT[x, type]]]@chemotaxisCompound) {
+                  ind_ct <- which(object@models[[object@cellDT[x, type]]]@chemotaxisCompound == icpd)
+                  ind <- which(res[["field.cpds"]] == icpd)
+                  delta_field_x <- object@environ@field.pts[res[["field.id"]]]$x - ic_x
+                  delta_field_y <- object@environ@field.pts[res[["field.id"]]]$y - ic_y
+
+                  f_conc <- res[["field.conc"]][,ind]
+                  if(sum(f_conc) == 0)
+                    f_conc <- rep(1,length(f_conc))
+                  f_conc <- f_conc/sum(f_conc)
+
+
+                  res[["CT.x"]] <- res[["CT.x"]] + weighted.mean(delta_field_x, f_conc) * object@models[[object@cellDT[x, type]]]@chemotaxisStrength[ind_ct]
+                  res[["CT.y"]] <- res[["CT.y"]] + weighted.mean(delta_field_y, f_conc) * object@models[[object@cellDT[x, type]]]@chemotaxisStrength[ind_ct]
+                }
+
                 return(res)
               })
 
               # - - - - - - - - - - - - #
               # (2) parallel agentFBA   #
-              # - - - - - - - - - - - - #K
+              # - - - - - - - - - - - - #
               if(verbose > 1)
                 cat("... performing cell-agent-FBA\n", sep ='')
 
@@ -167,15 +188,23 @@ setMethod(f          = "run.simulation",
               # - - - - - - - - - - - - #
               if(verbose > 1)
                 cat("... diffusion of compounds\n", sep ='')
-
+              #saveRDS(object@environ@concentrations, file = paste0("sim_conc_",object@n_rounds,".RDS"))
               object@environ <- diffuse.compounds(object@environ,
-                                                  n_iter = object@diffusionNIter,
+                                                  deltaTime = object@deltaTime,
                                                   cl = cl,
                                                   n.cores = n.cores)
 
+              # - - - - - - - - - #
+              # (3.5) Chemotaxis  #
+              # - - - - - - - - - #
+              CT.x <- unlist(lapply(cellFieldEnv, function(x) x$CT.x))
+              CT.y <- unlist(lapply(cellFieldEnv, function(x) x$CT.y))
+
+              object@cellDT$x.vel <- object@cellDT$x.vel + CT.x
+              object@cellDT$y.vel <- object@cellDT$y.vel + CT.y
 
               # - - - - - - - - - - - - - -#
-              # (4) grow and devide cells  #
+              # (4) grow and divide cells  #
               # - - - - - - - - - - - - - -#
               if(verbose > 1)
                 cat("... binary fission of large cells\n", sep ='')
@@ -213,19 +242,23 @@ setMethod(f          = "run.simulation",
 
               ncells_new <- nrow(object@cellDT)
 
-              cvmax <- unlist(lapply(object@models, function(x) x@vmax))
+              cvmax <- unlist(lapply(object@models, function(x) x@vmax)) * 3600 * object@deltaTime # max speed in µm per deltaTime
+
+              # Brownian motion of cells (assuming normal distribution)
+              r_motion <- matrix(rnorm(ncells_new * 2,sd = object@rMotion * 60 * object@deltaTime),
+                                 ncol = 2)
 
               # set up particle simulation
               sim_new <- tbl_graph(nodes = object@cellDT, directed = F, node_key = "cell") %>%
                 simulate(setup = predefined_genesis(x = object@cellDT$x,
                                                     y = object@cellDT$y,
-                                                    x_vel = object@cellDT$x.vel,
-                                                    y_vel = object@cellDT$y.vel)) %>%
-                wield(random_force,
-                      xmin = -object@rMotion,
-                      xmax =  object@rMotion,
-                      ymin = -object@rMotion,
-                      ymax =  object@rMotion) %>%
+                                                    x_vel = object@cellDT$x.vel + r_motion[,1],
+                                                    y_vel = object@cellDT$y.vel + r_motion[,2])) %>%
+                # wield(random_force,
+                #       xmin = -object@rMotion,
+                #       xmax =  object@rMotion,
+                #       ymin = -object@rMotion,
+                #       ymax =  object@rMotion) %>%
                 wield(collision_force, radius = object@cellDT$size/2, n_iter = 50, strength = 0.7) %>%
                 impose(velocity_constraint,
                        vmax = cvmax[object@cellDT$type]) %>%
@@ -245,6 +278,8 @@ setMethod(f          = "run.simulation",
               object@cellDT$y <- sim_new$position[,2]
               object@cellDT$x.vel <- sim_new$velocity[,1]
               object@cellDT$y.vel <- sim_new$velocity[,2]
+
+              print(plot.cells(object))
 
               # - - - - - - - - #
               # (6) Record data #

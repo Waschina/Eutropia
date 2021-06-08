@@ -7,12 +7,12 @@
 #'
 #' @slot n_rounds integer for the number of simulation rounds that were already performed for this \code{growthSimulation} object.
 #' @slot deltaTime double for length of each time step for the simulation in hours.
-#' @slot diffusionNIter integer. Number of diffusion steps per simulation round.
-#' @slot rMotion double. Maximum x- and y distance a cell can travel by means of random movement per simulation round.
+#' @slot rMotion double. Maximum x- and y distance a cell can travel by means of random movement per simulation round.Unit: µm per minute.
 #' @slot models list for \code{Organism} objects to represent the different strains in the simulation.
 #' @slot history list with recordings of simulation status information at each simulation round.
-#' @slot universePolygon Matrix specifiying the corners of the polygon that defined the growth environment boundaries. 2-dimensional: x and y.
-#' @slot environ Object of S4-class \code{grwothEnvironment}, that specifies the environment mesh layout, compounds, and their concentrations.
+#' @slot cellDT Data table with individual cell information (e.g. size, position, velocity, type)
+#' @slot universePolygon Matrix specifying the corners of the polygon that defined the growth environment boundaries. 2-dimensional: x and y.
+#' @slot environ Object of S4-class \code{growthEnvironment}, that specifies the environment mesh layout, compounds, and their concentrations.
 setClass("growthSimulation",
 
          slots = c(
@@ -21,7 +21,6 @@ setClass("growthSimulation",
 
            # simulation slots
            deltaTime      = "numeric",
-           diffusionNIter = "numeric", # diffusion steps per simulation round
            rMotion        = "numeric",
            models         = "list",
            history        = "list",
@@ -52,10 +51,8 @@ setClass("growthSimulation",
 #' @param gridFieldSize double. Distance between neighboring environments 3D mesh field elements (rhombic dodecahedrons) in µm.
 #' @param gridFieldLayers integer. z-dimension (height) as the number of layers of field elements.
 #' @param deltaTime double specifying the length of each time step for the simulation in hours.
-#' @param diffusion.alpha Deprecated. Please do not use/change. Old docs: double. This number should be between 0 and 1 and specifies the rate of naive diffusion, but specifying the fraction of compound in a field that is equally distributed to the neighboring fields. Default: 12/13.
-#' @param diffusion.niter integer. Number of diffusion steps per simulation round.
 #' @param pFBAcoeff integer. pFBA coefficient. Default: 1e-6
-#' @param rMotion double. Maximum x- and y distance a cell can travel by means of random movement per minute. Default: 1/6 µm
+#' @param rMotion double. Maximum x- and y distance a cell can travel by means of random motion per minute Default: 0.1 µm
 #'
 #' @return Object of class \code{growthSimulation}.
 #'
@@ -68,10 +65,8 @@ setGeneric(name="init.simulation",
                         gridFieldSize = 1,
                         gridFieldLayers = 3,
                         deltaTime = 1/6,
-                        diffusion.alpha = 12/13,
-                        diffusion.niter = 60,
                         pFBAcoeff = 1e-6,
-                        rMotion = 1/6, ...)
+                        rMotion = 0.1, ...)
            {
              standardGeneric("init.simulation")
            }
@@ -83,16 +78,13 @@ setMethod(f          = "init.simulation",
                                 gridFieldSize   = 1,
                                 gridFieldLayers = 3,
                                 deltaTime       = 1/6,
-                                diffusion.alpha = 12/13, # each grid field has 12 neighbors. Plus itself: 13. 12/13 means that the concentration in one field is equally distributed among all its neigbors and itself uin each diffusion iteration step
-                                diffusion.niter = floor(deltaTime * 360 * 1/gridFieldSize)*2,
-                                rMotion         = deltaTime, ...) {
+                                rMotion         = 0.1, ...) {
 
 
             # init growth environment
             environ <- new("growthEnvironment",
                            polygon.coords  = universePolygon,
                            field.size      = gridFieldSize,
-                           diffusion.alpha = diffusion.alpha,
                            field.layers    = gridFieldLayers)
 
             # construct empty cell info table
@@ -108,7 +100,6 @@ setMethod(f          = "init.simulation",
             simobj <- new("growthSimulation",
                           n_rounds = 0,
                           deltaTime = deltaTime,
-                          diffusionNIter = diffusion.niter,
                           rMotion = rMotion,
                           models = list(),
                           history = list(),
@@ -140,20 +131,23 @@ setMethod(f          = "init.simulation",
 #' @param coords (optional) A two column numerical matrix specifying the coordinates (1st column x, 2nd column y) of the initial cells. If provided, the number of rows should be equal to \code{ncells}. Default: NULL
 #' @param distribution.method If \code{coords} is \code{NULL}, this parameter specifies the distribution method for initial cells. Default: "random_centroid"
 #' @param distribution.center Numeric vector of length 2, which specifies the coordinates of the centre for the \code{distribution.method}.
-#' @param distribution.radius double. Spcifies the radius (in µm) in which inital cells are distributed.
+#' @param distribution.radius double. Spcifies the radius (in µm) in which initial cells are distributed.
 #' @param cellDiameter double. Diameter in µm of initial cells.
 #' @param cellMassInit double. Mass in pg of initial cells. Default is 0.28 pg
-#' @param cellMassAtDivision double. Cell mass at which a cell devides in two daughter cells. Default: 0.55 pg
+#' @param cellMassAtDivision double. Cell mass at which a cell divides into two daughter cells. Default: 0.56 pg
 #' @param cellShape character. Shape of cells. Currently only "coccus" is supported.
 #' @param vmax double. Maximum velocity of a cell in µm per minute.
-#' @param scavengeDist double. Distance in µm a cell can scavenge nutrients from its surrounding.
+#' @param scavengeDist double. Distance in µm a cell can scavenge nutrients from its surrounding/microoenvironment.
 #' @param rm.deadends If TRUE, dead-end metabolites and reactions are removed from the \code{model}, which reduces the computation time for FBA, but has otherwise no effect on the flux distribution solutions.
+#' @param chemotaxisCompound Character vector of compound IDs, that are signals for directed movement of the organism.
+#' @param chemotaxisStrength Numeric vector that indicated the strength of chemotaxis. Positive value for attraction; Negative for repelling effect.
 #'
 #' @return Object of class \code{growthSimulation}.
 #'
 #' @references
 #'  \url{https://bionumbers.hms.harvard.edu/bionumber.aspx?id=100008} \cr
-#'  \url{http://book.bionumbers.org/how-big-is-an-e-coli-cell-and-what-is-its-mass/}
+#'  \url{http://book.bionumbers.org/how-big-is-an-e-coli-cell-and-what-is-its-mass/} \cr
+#'  \url{https://bionumbers.hms.harvard.edu/bionumber.aspx?id=115616&ver=0&trm=speed+e.+coli&org=}
 #'
 #' @examples
 #' # add two bacterial models (Eubacterium rectale, Bifidobacterium longum)
@@ -184,11 +178,14 @@ setGeneric(name="add.organism",
                         distribution.radius = NULL,
                         cellDiameter = (3 * 1 / (4 * pi))^(1/3) * 2, # diameter of sphere with 1 µm^3
                         cellMassInit = 0.28,
-                        cellMassAtDivision = 0.55,
+                        cellMassAtDivision = 0.56,
                         cellShape = "coccus",
-                        vmax = 1,
-                        scavengeDist = 5,
-                        rm.deadends = T, ...
+                        vmax = 11,
+                        scavengeDist = cellDiameter*2.5,
+                        rm.deadends = T,
+                        chemotaxisCompound = NULL,
+                        chemotaxisStrength = NULL,
+                        ...
            )
            {
              standardGeneric("add.organism")
@@ -212,10 +209,19 @@ setMethod(f          = "add.organism",
                                 cellMassInit = 0.28,
                                 cellMassAtDivision = 0.56,
                                 cellShape = "coccus",
-                                vmax = 1,
+                                vmax = 11,
                                 scavengeDist = cellDiameter*2.5,
                                 rm.deadends = T,
+                                chemotaxisCompound = NULL,
+                                chemotaxisStrength = NULL,
                                 ...) {
+
+            if(is.null(chemotaxisCompound))
+              chemotaxisCompound <- character(0)
+            if(is.null(chemotaxisStrength))
+              chemotaxisStrength <- double(0)
+            if(length(chemotaxisStrength) != length(chemotaxisCompound))
+              stop("Lengths of 'chemotaxisCompound' and 'chemotaxisStrength' should be equal.")
 
             # init new organism object
             object@models[[name]] <- new("Organism",
@@ -225,7 +231,9 @@ setMethod(f          = "add.organism",
                                          vmax = vmax,
                                          scavengeDist = scavengeDist,
                                          mod = model,
-                                         rm.deadends = rm.deadends)
+                                         rm.deadends = rm.deadends,
+                                         chemotaxisCompound = chemotaxisCompound,
+                                         chemotaxisStrength = chemotaxisStrength)
 
             #if not provided -> assign cell positions:
             if(is.null(coords)) {
@@ -239,8 +247,11 @@ setMethod(f          = "add.organism",
               if(distribution.method == "random_centroid") {
 
                 PGcent <- distribution.center
-                if(is.null(PGcent))
+                if(is.null(PGcent)) {
                   PGcent <- SpatialPoints(matrix(universePG@labpt,ncol = 2))
+                } else {
+                  PGcent <- SpatialPoints(matrix(PGcent,ncol = 2))
+                }
 
                 maxRadius <- distribution.radius
                 if(is.null(maxRadius)) {
@@ -604,6 +615,7 @@ setMethod(f = "plot.compounds",
 #' @param concentrations Numeric vector with the concentrations of the compounds from \code{compounds} in the same order. Values in mM.
 #' @param compound.names Character vector with the compound names.
 #' @param is.constant Logical vector that indicates if the compound should remain constant over time despite of potential uptake or production of cells.
+#' @param compound.D Numeric vector with the compounds' diffusion coefficients in µm^2/s. Default: 75
 #'
 #' @details Compound concentration are equally distributed across the whole growth environment.
 #' If compound is already present, old and new concentrations are added. More options are planned.
@@ -625,7 +637,8 @@ setMethod(f = "plot.compounds",
 #' @export
 setGeneric(name="add.compounds",
            def=function(object, compounds, concentrations,
-                        compound.names = NULL, is.constant = NULL)
+                        compound.names = NULL, is.constant = NULL,
+                        compound.D  = NULL, ...)
            {
              standardGeneric("add.compounds")
            }
@@ -634,12 +647,13 @@ setGeneric(name="add.compounds",
 setMethod(f          = "add.compounds",
           signature  = signature(object         = "growthSimulation",
                                  compounds      = "character",
-                                 concentrations = "numeric",
-                                 compound.names = "character",
-                                 is.constant    = "logical"),
+                                 concentrations = "numeric"),
           definition = function(object, compounds, concentrations,
                                 compound.names = NULL,
-                                is.constant = NULL) {
+                                is.constant = NULL,
+                                compound.D  = NULL, ...) {
+
+            default_D <- 75
 
             if(length(compounds) != length(concentrations))
               stop("Lengths of 'compounds' and 'concentrations' differ.")
@@ -649,9 +663,27 @@ setMethod(f          = "add.compounds",
               is.constant <- rep(F, length(compounds))
             }
 
-            # is.constant should be NULL (see above) or of lenfth 1 or n (nr. of compounds)
+            # assign each compound the default diffusion coefficient if nothing
+            # else is specified
+            if(is.null(compound.D)) {
+              compound.D <- rep(default_D, length(compounds))
+            } else {
+              compound.D <- ifelse(is.na(compound.D), default_D, compound.D)
+            }
+
+            # if only one diff. coeff. is specified -> use it for all metabolites
+            if(length(compound.D) == 1) {
+              compound.D <- rep(compound.D, length(compounds))
+            }
+
+            # is.constant should be NULL (see above) or of length 1 or n (nr. of compounds)
             if(length(is.constant) != 1 & length(is.constant) != length(compounds)) {
-              stop("Length of 'is.constant' is not 1 or the same length als 'compounds'")
+              stop("Length of 'is.constant' is not 1 or the same length as 'compounds'")
+            }
+
+            # compound.D should be NULL (see above) or of length 1 or n (nr. of compounds)
+            if(length(compound.D) != 1 & length(compound.D) != length(compounds)) {
+              stop("Length of 'compound.D' is not 1 or the same length as 'compounds'")
             }
 
             # extent is.constant vector if only one value
@@ -675,6 +707,7 @@ setMethod(f          = "add.compounds",
                 c_ind <- which(object@environ@compounds == compounds[i])
                 object@environ@concentrations[, c_ind] <- object@environ@concentrations[, c_ind] + concentrations[i]
                 object@environ@conc.isConstant[c_ind]  <- is.constant[i]
+                object@environ@compound.D[c_ind]       <- compound.D[i]
                 if(!is.na(compound.names[i]))
                   object@environ@compound.names[c_ind] <- compound.names[i]
 
@@ -684,6 +717,7 @@ setMethod(f          = "add.compounds",
                 object@environ@concentrations  <- cbind(object@environ@concentrations,
                                                        matrix(concentrations[i], ncol = 1, nrow = object@environ@nfields))
                 object@environ@conc.isConstant <- c(object@environ@conc.isConstant, is.constant[i])
+                object@environ@compound.D      <- c(object@environ@compound.D, compound.D[i])
                 if(!is.na(compound.names[i])) {
                   if(compound.names[i] %in% object@environ@compound.names) {
                     warning(paste0("Compound with name '",compound.names[i],"' already exists. Replacing with '",compounds[i],"'."))

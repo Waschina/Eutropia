@@ -7,7 +7,7 @@
 using namespace Rcpp;
 
 // diffChange
-arma::mat diffChange(arma::mat adjmat, arma::mat nneighbors, arma::mat conc, int niter);
+arma::mat diffChange(arma::mat adjmat, arma::mat nneighbors, arma::mat conc, arma::vec niter);
 RcppExport SEXP _EcoAgents_diffChange(SEXP adjmatSEXP, SEXP nneighborsSEXP, SEXP concSEXP, SEXP niterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -15,7 +15,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat >::type adjmat(adjmatSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type nneighbors(nneighborsSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type conc(concSEXP);
-    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type niter(niterSEXP);
     rcpp_result_gen = Rcpp::wrap(diffChange(adjmat, nneighbors, conc, niter));
     return rcpp_result_gen;
 END_RCPP
