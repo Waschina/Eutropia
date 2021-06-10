@@ -27,6 +27,7 @@ setMethod("initialize", "Organism",
                    rm.deadends,
                    chemotaxisCompound,
                    chemotaxisStrength,
+                   open.bounds,
                    ...) {
             .Object <- callNextMethod(.Object, ...)
 
@@ -46,6 +47,16 @@ setMethod("initialize", "Organism",
             # Rm exchange reaction for D-lactate if L-lactate is also present
             if(all(c("EX_cpd00221_e0","EX_cpd00159_e0") %in% mod@react_id))
               mod <- rmReact(mod, react = "EX_cpd00221_e0")
+
+            # open bounds if wanted
+            if(!is.null(open.bounds)) {
+              if(open.bounds > 0)
+                open.bounds <- open.bounds * -1
+              dt_ex <- data.table(rxn = mod@react_id, lb = mod@lowbnd)
+              dt_ex <- dt_ex[lb == 0 & grepl("^EX_", rxn)]
+              mod <- changeBounds(mod, react = dt_ex$rxn,
+                                  lb = rep(open.bounds, nrow(dt_ex)))
+            }
 
             # Network
             if(rm.deadends) {

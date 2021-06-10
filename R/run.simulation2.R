@@ -8,7 +8,7 @@
 #'
 #' @param object An object of class \code{growthSimulation}
 #' @param niter Number of rounds to simulate
-#' @param verbose Control the 'chattiness' of the simulation logs. 0 - no logs, 1 - only main logs, 2 - more lines per round.
+#' @param verbose Control the 'chattiness' of the simulation logs. 0 - no logs, 1 - only main logs, 2 - chaffinch.
 #' @param lim_cells Simulation terminates of total number of cells exceed this value.
 #' @param lim_time Simulation terminated after the first iteration that finished after this time limit (in minutes).
 #' @param record Character vector that indicated which simulation variables should be recorded after each simulation round. See Details.
@@ -279,7 +279,7 @@ setMethod(f          = "run.simulation",
               object@cellDT$x.vel <- sim_new$velocity[,1]
               object@cellDT$y.vel <- sim_new$velocity[,2]
 
-              print(plot.cells(object))
+              #print(plot.cells(object))
 
               # - - - - - - - - #
               # (6) Record data #
@@ -304,6 +304,14 @@ setMethod(f          = "run.simulation",
                   object@history[[simRound]]$global_compounds <- dt_conc_tmp
                 }
 
+                # Cell-individual exchange fluxes in fmol
+                cell.ex.fluxes <- lapply(agFBA_results, function(icell) {
+                  data.table(compound = names(icell$ex.fluxes),
+                             exflux   = icell$ex.fluxes)
+                })
+                cell.ex.fluxes <- rbindlist(cell.ex.fluxes, idcol = "cell")
+                object@history[[simRound]]$cell.exchanges <- cell.ex.fluxes
+
                 # specific compound concentrations per grids
                 if(any(grepl("^compound_", record)) | ("compounds" %in% record)) {
                   COI <- record[grepl("^compound_", record)] # metabolites of interest
@@ -322,7 +330,6 @@ setMethod(f          = "run.simulation",
                   }
                 }
 
-                #gc()
                 # TODO: Record individual fluxes
               }
 

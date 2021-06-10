@@ -51,7 +51,7 @@ setClass("growthSimulation",
 #' @param gridFieldSize double. Distance between neighboring environments 3D mesh field elements (rhombic dodecahedrons) in µm.
 #' @param gridFieldLayers integer. z-dimension (height) as the number of layers of field elements.
 #' @param deltaTime double specifying the length of each time step for the simulation in hours.
-#' @param pFBAcoeff integer. pFBA coefficient. Default: 1e-6
+#' @param pFBAcoeff double for pFBA coefficient. Default: 1e-6
 #' @param rMotion double. Maximum x- and y distance a cell can travel by means of random motion per minute Default: 0.1 µm
 #'
 #' @return Object of class \code{growthSimulation}.
@@ -141,6 +141,19 @@ setMethod(f          = "init.simulation",
 #' @param rm.deadends If TRUE, dead-end metabolites and reactions are removed from the \code{model}, which reduces the computation time for FBA, but has otherwise no effect on the flux distribution solutions.
 #' @param chemotaxisCompound Character vector of compound IDs, that are signals for directed movement of the organism.
 #' @param chemotaxisStrength Numeric vector that indicated the strength of chemotaxis. Positive value for attraction; Negative for repelling effect.
+#' @param open.bounds Numeric value that is used to reset lower bounds of exchange reactions, which have a current lower bound of 0. See Details.
+#'
+#' @details
+#' Genome-scale metabolic models usually come pre-constraint, which means that
+#' lower bounds for exchange reactions (= max. uptake rates) are set to represent, both,
+#' (a) a specific growth environment and (b) the physiological limit of nutrient uptake.
+#' Yet, lower bounds that have a value of 0 might also be utilizable by the
+#' organism if the compound is present in the environment.
+#' If the option `open.bounds` is used, those 0-lower bounds are replaced with a
+#' new lower bound to enable the potential uptake in the agent-based simulation.
+#' Please note that the value should by convention be negative; however
+#' this package changes the value to it's negative counterpart if a positive value
+#' is provided.
 #'
 #' @return Object of class \code{growthSimulation}.
 #'
@@ -185,6 +198,7 @@ setGeneric(name="add.organism",
                         rm.deadends = T,
                         chemotaxisCompound = NULL,
                         chemotaxisStrength = NULL,
+                        open.bounds = NULL,
                         ...
            )
            {
@@ -214,6 +228,7 @@ setMethod(f          = "add.organism",
                                 rm.deadends = T,
                                 chemotaxisCompound = NULL,
                                 chemotaxisStrength = NULL,
+                                open.bounds = NULL,
                                 ...) {
 
             if(is.null(chemotaxisCompound))
@@ -233,7 +248,8 @@ setMethod(f          = "add.organism",
                                          mod = model,
                                          rm.deadends = rm.deadends,
                                          chemotaxisCompound = chemotaxisCompound,
-                                         chemotaxisStrength = chemotaxisStrength)
+                                         chemotaxisStrength = chemotaxisStrength,
+                                         open.bounds = open.bounds)
 
             #if not provided -> assign cell positions:
             if(is.null(coords)) {
@@ -442,6 +458,11 @@ setMethod(f = "plot.cells",
             kidt <- data.table(object@universePolygon)
             colnames(kidt) <- c("x","y")
 
+            n_types <- length(unique(cellposDT$type))
+            col_code <- "Set1"
+            if(n_types > 8)
+              col_code <- "Set3"
+
             p <- ggplot(cellposDT, aes(x0 = x,y0 = y)) +
               geom_polygon(data = kidt, mapping = aes(x = x, y = y), col = "#333333", fill = "black", linetype = "solid") +
               geom_circle(aes(r = size/2, fill = type, col = type), alpha = 0.3, show.legend = T, key_glyph = draw_key_point) +
@@ -449,8 +470,15 @@ setMethod(f = "plot.cells",
               geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
                                y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = "white") +
               annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
-                       color = "white", hjust = 0.5, vjust = -1, size = 2.5) +
-              scale_color_brewer(palette = "Set1") +
+                       color = "white", hjust = 0.5, vjust = -1, size = 2.5)
+
+            # use nicer brewer colors if here are not to many distinct cell types
+            # Otherwise: using ggplot defaults
+            if(n_types <= 12) {
+              p <- p + scale_color_brewer(palette = col_code)
+            }
+
+            p <- p +
               scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
               theme_bw() +
               theme(plot.background = element_blank(),
@@ -490,12 +518,13 @@ setMethod(f = "plot.cells",
 #'
 #' @param object S4-object of type \code{growthSimulation}.
 #' @param tlim Numeric vector of length 2, specifying the x-range (Time) to be displayed.
+#' @param ylim Numeric vector of length 2, specifying the y-range (Mass) to be displayed.
 #'
 #' @return A ggplot object.
 #'
 #' @export
 setGeneric(name="plot.growth",
-           def=function(object, tlim = NULL, ...)
+           def=function(object, tlim = NULL, ylim = NULL, ...)
            {
              standardGeneric("plot.growth")
            }
@@ -504,7 +533,7 @@ setGeneric(name="plot.growth",
 
 setMethod(f = "plot.growth",
           signature = signature(object = "growthSimulation"),
-          definition = function(object, tlim = NULL) {
+          definition = function(object, tlim = NULL, ylim = NULL) {
 
             # Sanity checks
             if(object@n_rounds < 2)
@@ -522,6 +551,7 @@ setMethod(f = "plot.growth",
               scale_color_brewer(palette = "Set1") +
               labs(x = "Time [hr]", y = "Mass [pg]",col = "Organism") +
               scale_x_continuous(expand = c(0,0)) +
+              coord_cartesian(xlim = tlim, ylim = ylim) +
               theme_bw() +
               theme(panel.grid = element_blank(),
                     panel.border = element_blank(),
@@ -546,12 +576,13 @@ setMethod(f = "plot.growth",
 #' @param compounds Vector of compound IDs whose concentration is plotted. If no IDs are provided,
 #' the top variable (SD) compounds are plotted (max. 8 compounds).
 #' @param tlim Numeric vector of length 2, specifying the x-range (Time) to be displayed.
+#' @param ylim Numeric vector of length 2, specifying the y-range (mM) to be displayed.
 #'
 #' @return A ggplot object.
 #'
 #' @export
 setGeneric(name="plot.compounds",
-           def=function(object, compounds = NULL, tlim = NULL, ...)
+           def=function(object, compounds = NULL, tlim = NULL, ylim = NULL, ...)
            {
              standardGeneric("plot.compounds")
            }
@@ -560,7 +591,7 @@ setGeneric(name="plot.compounds",
 
 setMethod(f = "plot.compounds",
           signature = signature(object = "growthSimulation"),
-          definition = function(object, compounds = NULL, tlim = NULL) {
+          definition = function(object, compounds = NULL, tlim = NULL, ylim = NULL) {
 
             # Sanity checks
             if(object@n_rounds < 2)
@@ -593,6 +624,7 @@ setMethod(f = "plot.compounds",
               scale_color_brewer(palette = "Set1") +
               labs(x = "Time [hr]", y = "Concentration [mM]",col = "Compound") +
               scale_x_continuous(expand = c(0,0)) +
+              coord_cartesian(xlim = tlim, ylim = ylim) +
               theme_bw() +
               theme(panel.grid = element_blank(),
                     panel.border = element_blank(),
@@ -846,6 +878,57 @@ setMethod(f = "plot.environment",
 
             return(p)
             #return(plot.environment(object@environ, compounds, compound.names = compound.names, xlim = xlim, ylim = ylim))
+
+          }
+)
+
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+# Summary exchanges           #
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+#' @title Summary of uptake / production by organism type
+#'
+#' @description Uptake/Production rates in fmol summarized by organism type
+#'
+#' @param object S4-object of type \code{growthSimulation}.
+#' @param iter Positive integer number of the simulation step/iteration to plot the rates.
+#'
+#' @return A data.table.
+#'
+#' @export
+setGeneric(name="summary.exchanges",
+           def=function(object, iter = NULL)
+           {
+             standardGeneric("summary.exchanges")
+           }
+)
+
+setMethod(f = "summary.exchanges",
+          signature = signature(object = "growthSimulation"),
+          definition = function(object, iter = NULL) {
+
+            # Sanity checks
+            if(object@n_rounds < 1)
+              stop("Simulation did not yet run for at least 1 iteration. No exchange rates availabe (yet).")
+
+            if(!is.null(iter)) {
+              if(iter > object@n_rounds) {
+                warning(paste0("Simulation did not run ",iter," iterations yet. Displaying results for last iteration (",object@n_rounds,")"))
+                iter <- object@n_rounds
+              }
+            } else {
+              iter <- object@n_rounds
+            }
+
+            dt_exch <- merge(object@history[[iter]]$cell.exchanges,
+                             object@history[[iter]]$cells[,.(cell, type)],
+                             by = "cell")
+            dt_exch <- dt_exch[, .(fmol = sum(exflux)), by = .(type, compound)]
+            dt_exch[, compound := gsub("^EX_","",compound)]
+            dt_exch <- dt_exch[compound != "cpd11416_c0"] # Biomass...
+            dt_exch$compound.name <- object@environ@compound.names[match(dt_exch$compound,
+                                                                         object@environ@compounds)]
+
+            return(dt_exch[,.(type, compound, compound.name, fmol)])
 
           }
 )

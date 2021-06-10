@@ -4,7 +4,7 @@
 \alias{plot.compounds}
 \title{Plot compound time curves}
 \usage{
-plot.compounds(object, compounds = NULL, tlim = NULL, ...)
+plot.compounds(object, compounds = NULL, tlim = NULL, ylim = NULL, ...)
 }
 \arguments{
 \item{object}{S4-object of type \code{growthSimulation}.}
@@ -13,6 +13,8 @@ plot.compounds(object, compounds = NULL, tlim = NULL, ...)
 the top variable (SD) compounds are plotted (max. 8 compounds).}
 
 \item{tlim}{Numeric vector of length 2, specifying the x-range (Time) to be displayed.}
+
+\item{ylim}{Numeric vector of length 2, specifying the y-range (mM) to be displayed.}
 }
 \value{
 A ggplot object.

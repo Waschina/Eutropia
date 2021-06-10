@@ -22,6 +22,7 @@ add.organism(
   rm.deadends = T,
   chemotaxisCompound = NULL,
   chemotaxisStrength = NULL,
+  open.bounds = NULL,
   ...
 )
 }
@@ -59,12 +60,26 @@ add.organism(
 \item{chemotaxisCompound}{Character vector of compound IDs, that are signals for directed movement of the organism.}
 
 \item{chemotaxisStrength}{Numeric vector that indicated the strength of chemotaxis. Positive value for attraction; Negative for repelling effect.}
+
+\item{open.bounds}{Numeric value that is used to reset lower bounds of exchange reactions, which have a current lower bound of 0. See Details.}
 }
 \value{
 Object of class \code{growthSimulation}.
 }
 \description{
 Adds an organism an its genome-scale metabolic network model to the growth simulation object.
+}
+\details{
+Genome-scale metabolic models usually come pre-constraint, which means that
+lower bounds for exchange reactions (= max. uptake rates) are set to represent, both,
+(a) a specific growth environment and (b) the physiological limit of nutrient uptake.
+Yet, lower bounds that have a value of 0 might also be utilizable by the
+organism if the compound is present in the environment.
+If the option `open.bounds` is used, those 0-lower bounds are replaced with a
+new lower bound to enable the potential uptake in the agent-based simulation.
+Please note that the value should by convention be negative; however
+this package changes the value to it's negative counterpart if a positive value
+is provided.
 }
 \examples{
 # add two bacterial models (Eubacterium rectale, Bifidobacterium longum)

@@ -4,12 +4,14 @@
 \alias{plot.growth}
 \title{Plot growth curves}
 \usage{
-plot.growth(object, tlim = NULL, ...)
+plot.growth(object, tlim = NULL, ylim = NULL, ...)
 }
 \arguments{
 \item{object}{S4-object of type \code{growthSimulation}.}
 
 \item{tlim}{Numeric vector of length 2, specifying the x-range (Time) to be displayed.}
+
+\item{ylim}{Numeric vector of length 2, specifying the y-range (Mass) to be displayed.}
 }
 \value{
 A ggplot object.
