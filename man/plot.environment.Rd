@@ -10,6 +10,10 @@ plot.environment(
   compound.names = NULL,
   xlim = NULL,
   ylim = NULL,
+  iter = NULL,
+  scalebar.color = "white",
+  layer = 0,
+  gradient.limits = NULL,
   ...
 )
 }
@@ -26,6 +30,12 @@ plot.environment(
 
 \item{iter}{Positive integer number of the simulation step/iteration to plot the distribution. Works only if the respective metabolite
 concentrations were prior recorded (see \code{link{run.simulation}}). If \code{NULL}, current distribution of compound concentrations.}
+
+\item{scalebar.color}{Color of the scale bar and its annotation. Default: "white".}
+
+\item{layer}{Positive integer, specifying which layer (z-Dimension) to plot. Default: 0 (base plane).}
+
+\item{gradient.limits}{Numeric vector of length 2 specifying the concentration range that is spanned by the color gradient.}
 }
 \value{
 A ggplot object.

@@ -780,12 +780,18 @@ setMethod(f          = "add.compounds",
 #' @param ylim Numeric vector of length 2 specifying the limits (top and bottom) for y axis; i.e. the vertical dimension.
 #' @param iter Positive integer number of the simulation step/iteration to plot the distribution. Works only if the respective metabolite
 #' concentrations were prior recorded (see \code{link{run.simulation}}). If \code{NULL}, current distribution of compound concentrations.
+#' @param scalebar.color Color of the scale bar and its annotation. Default: "white".
+#' @param layer Positive integer, specifying which layer (z-Dimension) to plot. Default: 0 (base plane).
+#' @param gradient.limits Numeric vector of length 2 specifying the concentration range that is spanned by the color gradient.
 #'
 #' @return A ggplot object.
 #'
 #' @export
 setGeneric(name="plot.environment",
-           def=function(object, compounds, compound.names = NULL, xlim = NULL, ylim = NULL, ...)
+           def=function(object, compounds, compound.names = NULL,
+                        xlim = NULL, ylim = NULL, iter = NULL,
+                        scalebar.color = "white", layer = 0,
+                        gradient.limits = NULL, ...)
            {
              standardGeneric("plot.environment")
            }
@@ -794,7 +800,10 @@ setGeneric(name="plot.environment",
 setMethod(f = "plot.environment",
           signature = signature(object = "growthSimulation",
                                 compounds = "character"),
-          definition = function(object, compounds, compound.names = NULL, xlim = NULL, ylim = NULL, iter = NULL) {
+          definition = function(object, compounds, compound.names = NULL,
+                                xlim = NULL, ylim = NULL, iter = NULL,
+                                scalebar.color = "white", layer = 0,
+                                gradient.limits = NULL) {
 
             # Argument sanity check
             if(!all(compounds %in% object@environ@compounds)) {
@@ -816,7 +825,7 @@ setMethod(f = "plot.environment",
                         max(object@universePolygon[,2]))
             }
 
-            # If no compound names are defined, use compound origunal compound names instead
+            # If no compound names are defined, use original compound names instead
             cpd_nameDT <- data.table(Compound = compounds,
                                      Compound.name = object@environ@compound.names[match(compounds, object@environ@compounds)])
             if(!is.null(compound.names)) {
@@ -829,6 +838,16 @@ setMethod(f = "plot.environment",
               }
             }
 
+            # which layer to plot? By deafult: Baseplane
+            zvals <- sort(unique(object@environ@field.pts@coords[,3]))
+            zvalOI <- zvals[1]
+            if(layer < 0 | layer > (length(zvals)-1) | layer %% 1 != 0) {
+              warning("Invalid layer. Plotting data for base plane (0).")
+            } else {
+              zvalOI <- zvals[layer + 1]
+            }
+
+            # which time step to plot?
             if(is.null(iter)) {
               envDT <- data.table(object@environ@concentrations)
             } else {
@@ -839,7 +858,7 @@ setMethod(f = "plot.environment",
             envDT <- envDT[, ..compounds]
 
             envDT <- cbind(object@environ@field.pts@coords, envDT)
-            envDT <- envDT[z == 0] # baseplane
+            envDT <- envDT[z == zvalOI] # baseplane
             envDT <- melt(envDT, id.vars = c("x","y"), variable.name = "Compound", value.name = "mM")
             envDT <- merge(envDT, cpd_nameDT)
 
@@ -859,11 +878,13 @@ setMethod(f = "plot.environment",
               geom_bin2d(aes(colour = mM), stat = "identity") +
               coord_equal(xlim = xlim, ylim = ylim) +
               geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
-                               y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = "white") +
+                               y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = scalebar.color) +
               annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
-                       color = "white", hjust = 0.5, vjust = -1, size = 2.5) +
+                       color = scalebar.color, hjust = 0.5, vjust = -1, size = 2.5) +
               theme_bw() +
-              scale_fill_viridis_c(guide = guide_colourbar(direction = "vertical")) + scale_color_viridis_c() + facet_wrap("Compound.name") +
+              scale_fill_viridis_c(guide = guide_colourbar(direction = "vertical"), limits = gradient.limits) +
+              scale_color_viridis_c(limits = gradient.limits) +
+              facet_wrap("Compound.name") +
               scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
               theme(legend.position = "right",
                     axis.line.x.top = element_line(color = "white", size = 1.5, lineend = "round"),

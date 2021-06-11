@@ -10,7 +10,6 @@ arma::mat diffChange(arma::mat adjmat, arma::mat nneighbors, arma::mat conc, arm
 
   for(unsigned i = 0; i < niter.size(); i++) {
 
-
     for(int k = 0; k < niter(i); k++) {
 
       ychg = ychg * 0;

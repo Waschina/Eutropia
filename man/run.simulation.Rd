@@ -20,7 +20,7 @@ run.simulation(
 
 \item{niter}{Number of rounds to simulate}
 
-\item{verbose}{Control the 'chattiness' of the simulation logs. 0 - no logs, 1 - only main logs, 2 - more lines per round.}
+\item{verbose}{Control the 'chattiness' of the simulation logs. 0 - no logs, 1 - only main logs, 2 - chaffinch.}
 
 \item{lim_cells}{Simulation terminates of total number of cells exceed this value.}
 

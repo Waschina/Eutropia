@@ -23,7 +23,7 @@ init.simulation(
 
 \item{deltaTime}{double specifying the length of each time step for the simulation in hours.}
 
-\item{pFBAcoeff}{integer. pFBA coefficient. Default: 1e-6}
+\item{pFBAcoeff}{double for pFBA coefficient. Default: 1e-6}
 
 \item{rMotion}{double. Maximum x- and y distance a cell can travel by means of random motion per minute Default: 0.1 µm}
 }
