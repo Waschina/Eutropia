@@ -4,7 +4,14 @@
 \alias{plot.cells}
 \title{Plot spatial distribution of cells}
 \usage{
-plot.cells(object, xlim = NULL, ylim = NULL, ...)
+plot.cells(
+  object,
+  xlim = NULL,
+  ylim = NULL,
+  iter = NULL,
+  scalebar.color = "white",
+  ...
+)
 }
 \arguments{
 \item{object}{S4-object of type \code{growthSimulation}.}
@@ -14,6 +21,8 @@ plot.cells(object, xlim = NULL, ylim = NULL, ...)
 \item{ylim}{Numeric vector of length 2, specifying the y-range to be displayed.}
 
 \item{iter}{Positive integer number of the simulation step/iteration to plot the cell distribution. If past simulation are displayed, the cell postitions needed to be recorded when running the simulation before (see \code{link{run.simulation}}). If NULL, current distribution is displayed.}
+
+\item{scalebar.color}{Color of the scale bar and its annotation. Default: "white".}
 }
 \value{
 A ggplot object.

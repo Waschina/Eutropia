@@ -402,12 +402,14 @@ setMethod(f          = "show",
 #' @param xlim Numeric vector of length 2, specifying the x-range to be displayed.
 #' @param ylim Numeric vector of length 2, specifying the y-range to be displayed.
 #' @param iter Positive integer number of the simulation step/iteration to plot the cell distribution. If past simulation are displayed, the cell postitions needed to be recorded when running the simulation before (see \code{link{run.simulation}}). If NULL, current distribution is displayed.
+#' @param scalebar.color Color of the scale bar and its annotation. Default: "white".
 #'
 #' @return A ggplot object.
 #'
 #' @export
 setGeneric(name="plot.cells",
-           def=function(object, xlim = NULL, ylim = NULL, ...)
+           def=function(object, xlim = NULL, ylim = NULL, iter = NULL,
+                        scalebar.color = "white", ...)
            {
              standardGeneric("plot.cells")
            }
@@ -415,7 +417,8 @@ setGeneric(name="plot.cells",
 
 setMethod(f = "plot.cells",
           signature = signature(object = "growthSimulation"),
-          definition = function(object, xlim = NULL, ylim = NULL, iter = NULL) {
+          definition = function(object, xlim = NULL, ylim = NULL, iter = NULL,
+                                scalebar.color = "white") {
 
             # If no limits are defined use polygon universe limits
             if(is.null(xlim)) {
@@ -468,9 +471,9 @@ setMethod(f = "plot.cells",
               geom_circle(aes(r = size/2, fill = type, col = type), alpha = 0.3, show.legend = T, key_glyph = draw_key_point) +
               coord_equal(xlim = xlim, ylim = ylim) +
               geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
-                               y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = "white") +
+                               y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = scalebar.color) +
               annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
-                       color = "white", hjust = 0.5, vjust = -1, size = 2.5)
+                       color = scalebar.color, hjust = 0.5, vjust = -1, size = 2.5)
 
             # use nicer brewer colors if here are not to many distinct cell types
             # Otherwise: using ggplot defaults
@@ -779,10 +782,11 @@ setMethod(f          = "add.compounds",
 #' @param xlim Numeric vector of length 2 specifying the limits (left and right) for x axis; i.e. the horizontal dimension.
 #' @param ylim Numeric vector of length 2 specifying the limits (top and bottom) for y axis; i.e. the vertical dimension.
 #' @param iter Positive integer number of the simulation step/iteration to plot the distribution. Works only if the respective metabolite
-#' concentrations were prior recorded (see \code{link{run.simulation}}). If \code{NULL}, current distribution of compound concentrations.
+#' concentrations were prior recorded (see \link{run.simulation}). If \code{NULL}, current distribution of compound concentrations.
 #' @param scalebar.color Color of the scale bar and its annotation. Default: "white".
-#' @param layer Positive integer, specifying which layer (z-Dimension) to plot. Default: 0 (base plane).
+#' @param layer Positive integer, specifying which layer (z-dimension) to plot. Default: 0 (base plane).
 #' @param gradient.limits Numeric vector of length 2 specifying the concentration range that is spanned by the color gradient.
+#' @param gradient.option Character string indicating the colormap to be used for visualizing metabolite concentrations. Please refer to \link[ggplot2]{scale_colour_viridis_d} so see possible options.
 #'
 #' @return A ggplot object.
 #'
@@ -791,7 +795,7 @@ setGeneric(name="plot.environment",
            def=function(object, compounds, compound.names = NULL,
                         xlim = NULL, ylim = NULL, iter = NULL,
                         scalebar.color = "white", layer = 0,
-                        gradient.limits = NULL, ...)
+                        gradient.limits = NULL, gradient.option = "viridis", ...)
            {
              standardGeneric("plot.environment")
            }
@@ -803,7 +807,7 @@ setMethod(f = "plot.environment",
           definition = function(object, compounds, compound.names = NULL,
                                 xlim = NULL, ylim = NULL, iter = NULL,
                                 scalebar.color = "white", layer = 0,
-                                gradient.limits = NULL) {
+                                gradient.limits = NULL, gradient.option = "viridis") {
 
             # Argument sanity check
             if(!all(compounds %in% object@environ@compounds)) {
@@ -882,8 +886,9 @@ setMethod(f = "plot.environment",
               annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
                        color = scalebar.color, hjust = 0.5, vjust = -1, size = 2.5) +
               theme_bw() +
-              scale_fill_viridis_c(guide = guide_colourbar(direction = "vertical"), limits = gradient.limits) +
-              scale_color_viridis_c(limits = gradient.limits) +
+              scale_fill_viridis_c(guide = guide_colourbar(direction = "vertical"), limits = gradient.limits,
+                                   option = gradient.option) +
+              scale_color_viridis_c(limits = gradient.limits, option = gradient.option) +
               facet_wrap("Compound.name") +
               scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
               theme(legend.position = "right",
