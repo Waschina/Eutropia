@@ -12,7 +12,17 @@ setClass("growthEnvironment",
            fieldSize       = "numeric",
            fieldVol        = "numeric",
            mat.in          = "matrix",
-           mat.out         = "matrix"
+           mat.out         = "matrix",
+
+           # Exoenzymes
+           exenz = "character", #  ID
+           exenz.name = "character", # name
+           exenz.D = "numeric", # diffusion coeefficient [µm^2 per sec]
+           exenz.lampda = "numeric", # decay constant [per hr]
+           exenz.Vmax = "numeric", # Vmax in MM-kinetics [µmol/min/mg]
+           exenz.Km = "numeric", # Km in MM-kinetics [mM]
+           exenz.conc = "matrix" # concentrations of exoenzymes in each field [mg / L]
+
          )
 )
 
