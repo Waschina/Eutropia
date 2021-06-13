@@ -3,27 +3,38 @@
 \docType{class}
 \name{growthSimulation-class}
 \alias{growthSimulation-class}
+\alias{growthSimulation}
 \title{Structure of the S4 class "growthSimulation"}
 \description{
-Structure of the S4 class \code{growthSimulation} as framework for the grwoth environment and container for agent-based flux balance analysis.
+Structure of the S4 class \code{growthSimulation} as framework
+for the growth environment and container for agent-based flux balance
+analysis.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{n_rounds}}{integer for the number of simulation rounds that were already performed for this \code{growthSimulation} object.}
+\item{\code{n_rounds}}{integer for the number of simulation rounds that were already
+performed for this \code{growthSimulation} object.}
 
-\item{\code{deltaTime}}{double for length of each time step for the simulation in hours.}
+\item{\code{deltaTime}}{double for length of each time step for the simulation in
+hours.}
 
-\item{\code{rMotion}}{double. Maximum x- and y distance a cell can travel by means of random movement per simulation round.Unit: µm per minute.}
+\item{\code{rMotion}}{double. Maximum x- and y distance a cell can travel by means of
+random movement per simulation round. Unit: µm per minute.}
 
-\item{\code{models}}{list for \code{Organism} objects to represent the different strains in the simulation.}
+\item{\code{models}}{List for \link{Organism} objects to represent the different
+strains in the simulation.}
 
-\item{\code{history}}{list with recordings of simulation status information at each simulation round.}
+\item{\code{history}}{list with recordings of simulation status information at each
+simulation round.}
 
-\item{\code{cellDT}}{Data table with individual cell information (e.g. size, position, velocity, type)}
+\item{\code{cellDT}}{Data table with individual cell information (e.g. size,
+position, velocity, type)}
 
-\item{\code{universePolygon}}{Matrix specifying the corners of the polygon that defined the growth environment boundaries. 2-dimensional: x and y.}
+\item{\code{universePolygon}}{Matrix specifying the corners of the polygon that
+defines the growth environment boundaries. 2-dimensional: x and y.}
 
-\item{\code{environ}}{Object of S4-class \code{growthEnvironment}, that specifies the environment mesh layout, compounds, and their concentrations.}
+\item{\code{environ}}{Object of S4-class \link{growthEnvironment}, that specifies the
+environment mesh layout, compounds, and their concentrations.}
 }}
 

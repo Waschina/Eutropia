@@ -1,3 +1,28 @@
+
+#' Structure of the S4 class "Organism"
+#'
+#' @aliases Organism
+#'
+#' @exportClass Organism
+#'
+#' @slot cellDiameter Numeric for the initial Diameter of cell spheres in µm
+#' @slot cellMassInit Numeric for the initial cell mass in pg
+#' @slot cellMassAtDivision Limit of a cell's mass before it divided into two
+#' daughter cells. Unit: pg
+#' @slot cellShape Character for the cell shape type. Currently, only coccus/sphere
+#' shapes are supported.
+#' @slot vmax Numeric for the maximum speed a cell can move in µm/s
+#' @slot scavangeDist Numeric indicating the maximum distance (from cell surface)
+#' a cell can scavenge nutrients from its surrounding. Unit: µm
+#' @slot chemotaxisCompound Character vector with the compound IDs that influence
+#' the cells chemotaxis behavior.
+#' @slot chemotaxisStrength Numeric vector indicating the strength of chemotaxis.
+#' Positive: attracting; Negative: Repelling
+#' @slot mod Object of S4-class \link[sybil]{modelorg} for the organisms metabolic
+#' network model.
+#' @slot exoenzymes Character vector of IDs of the organism's exoenzymes
+#' @slot exoenzymes.prod Numeric vector of the production rates of exoenzymes.
+#' Unit: nmol / gDW / hr (nmol Enzyme per gDW cells per hr)
 setClass("Organism",
 
          slots = c(
@@ -12,7 +37,11 @@ setClass("Organism",
            chemotaxisStrength = "numeric", # between 1 (attracting) and -1 (repelling)
 
            # Genome-scale model for FBA / pFBA
-           mod      = "modelorg"
+           mod      = "modelorg",
+
+           # Exoenzymes
+           exoenzymes = "character", # vector with Exoenzyme IDs
+           exoenzymes.prod = "numeric" # Vector for production rates in [nmol/gDW/hr]
          )
 )
 
@@ -44,7 +73,11 @@ setMethod("initialize", "Organism",
             .Object@chemotaxisCompound <- chemotaxisCompound
             .Object@chemotaxisStrength <- chemotaxisStrength
 
+            .Object@exoenzymes <- character(0)
+            .Object@exoenzymes.prod <- double(0)
+
             # Rm exchange reaction for D-lactate if L-lactate is also present
+            # (works only with gapseq models)
             if(all(c("EX_cpd00221_e0","EX_cpd00159_e0") %in% mod@react_id))
               mod <- rmReact(mod, react = "EX_cpd00221_e0")
 

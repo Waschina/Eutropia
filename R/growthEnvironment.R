@@ -1,3 +1,38 @@
+
+#' Structure of the S4 class "growthEnvironment"
+#'
+#' @aliases growthEnvironment
+#'
+#' @exportClass growthEnvironment
+#'
+#' @import Matrix
+#'
+#' @slot field.pts Object of class \link[sp]{SpatialPoints}. Coordinates of
+#' rhombic dodecahedron centers points.
+#' @slot compounds Character vector with compound IDs
+#' @slot compound.names Character vector with compound names
+#' @slot compound.D Numeric vector of the diffusion coefficient values for each
+#' compound. Unit: µm^2/s
+#' @slot concentrations (n x m) numeric matrix with n columns representing compounds
+#' and m grid field (field.pts). Units of matrix entries: mM
+#' @slot conc.isConstant Logical vector indicating if the respective compound is
+#' fixed (i.e. buffered) in its concentration.
+#' @slot fieldLayers Integer specifying how many layers (z-dimension) of rhomic
+#' dodecahedra fields are in the environment representation.
+#' @slot nfields Integer indicating the number of fields in the environment
+#' representation.
+#' @slot fieldSize Size of each rhomic dodecahedron in µm as the distance between
+#' opposite faces.
+#' @slot fieldVol Volume of each field. Unit: µm^3
+#' @slot mat.in A two column numeric matrix as a representation of the grid environment
+#' as a directed graph. First column (From) and second column (To) are denoting
+#' field's indices in `field.pts`
+#' @slot mat.out A two column matrix. First column: indices of each field in `field.pts`;
+#' second column: Number of neighboring fields
+#' @slot exoenzymes A list with the \link{Exoenzyme} S4 objects.
+#' @slot exoenzymes.conc Same as `concentrations`, but for the exoenzymes and in
+#' nM.
+#'
 setClass("growthEnvironment",
 
          slots = c(
@@ -15,14 +50,9 @@ setClass("growthEnvironment",
            mat.out         = "matrix",
 
            # Exoenzymes
-           exenz = "character", #  ID
-           exenz.name = "character", # name
-           exenz.D = "numeric", # diffusion coeefficient [µm^2 per sec]
-           exenz.lampda = "numeric", # decay constant [per hr]
-           exenz.Vmax = "numeric", # Vmax in MM-kinetics [µmol/min/mg]
-           exenz.Km = "numeric", # Km in MM-kinetics [mM]
-           exenz.conc = "matrix" # concentrations of exoenzymes in each field [mg / L]
 
+           exoenzymes      = "list",
+           exoenzymes.conc = "matrix" # Concentrations of exoenzymes per field [mg/L]
          )
 )
 
@@ -55,8 +85,6 @@ setMethod("initialize", "growthEnvironment",
             field.pts_base <- as.matrix(field.pts_base@coords)
             field.pts_base <- cbind(field.pts_base, matrix(0, ncol = 1, nrow = nrow(field.pts_base)))
             colnames(field.pts_base) <- c("x","y","z")
-
-            #field.pts_base <- SpatialPoints(field.pts_base)
 
             # Make additional layers
             #fieldHeight    <- sqrt(6)/3 * field.size  # z-axis difference between field centers of neighboring layers
@@ -92,6 +120,11 @@ setMethod("initialize", "growthEnvironment",
             .Object@fieldSize       <- field.size
             .Object@fieldVol        <- fieldVol
 
+            # Exoenzymes
+            .Object@exoenzymes      <- list()
+            .Object@exoenzymes.conc <- matrix(ncol = 0, nrow = nfields)
+
+            # Diffusion kernel
             DCM <- build.DCM(field.pts, field.size) # Diffusion coefficient matrix
 
             dt <- data.table(which(DCM != 0, arr.ind = T))
@@ -233,6 +266,9 @@ setMethod(f          = "build.DCM",
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~#
 # Compound diffusion   #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~#
+#' @import parallel
+setOldClass("SOCKcluster")
+
 setGeneric(name="diffuse.compounds",
            def=function(object, deltaTime, cl, n.cores, ...)
            {
@@ -248,6 +284,9 @@ setMethod(f          = "diffuse.compounds",
                                  n.cores        = "numeric"),
           definition = function(object, deltaTime, cl, n.cores) {
 
+            # - - - - - #
+            # Compounds #
+            # - - - - - #
             n.chunks <- n.cores
             ind_variable <- which(apply(object@concentrations,2,sd) > 0 & object@compound.D > 0)
 
@@ -259,27 +298,52 @@ setMethod(f          = "diffuse.compounds",
                                         n.chunks, labels = F))
 
             # no variable compounds -> no need for diffusion
-            if(length(ind_variable) == 0)
-              return(object)
+            if(length(ind_variable) > 0) {
+              # VIA RccpArmadillo
+              conc.list.tmp <- lapply(ind_var_chunks, function(x) {
 
-            # VIA RccpArmadillo
-            conc.list.tmp <- lapply(ind_var_chunks, function(x) {
+                diff_shere_surface_area <- object@compound.D[x] * 60 * 60 * deltaTime # surface area in µm^2 after one iteration step
+                diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
+                diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
 
-              diff_shere_surface_area <- object@compound.D[x] * 60 * 60 * deltaTime # surface area in µm^2 after one iteration step
-              diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
-              diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
+                list(mat.in  = object@mat.in,
+                     mat.out = object@mat.out,
+                     conc    = as.matrix(object@concentrations[,x]),
+                     n_iter  = diffusion.niter)
+              })
+              #print(ind_var_chunks[[1]])
+              conc.list.tmp <- parLapply(cl, conc.list.tmp, indDiff_worker)
 
-              list(mat.in  = object@mat.in,
-                   mat.out = object@mat.out,
-                   conc    = as.matrix(object@concentrations[,x]),
-                   n_iter  = diffusion.niter)
-            })
-            #print(ind_var_chunks[[1]])
-            conc.list.tmp <- parLapply(cl, conc.list.tmp, indDiff_worker)
+              for(k in 1:length(ind_var_chunks)) {
+                for(i in 1:ncol(conc.list.tmp[[k]])) {
+                  object@concentrations[,ind_var_chunks[[k]][i]] <- conc.list.tmp[[k]][,i]
+                }
+              }
+            }
 
-            for(k in 1:length(ind_var_chunks)) {
-              for(i in 1:ncol(conc.list.tmp[[k]])) {
-                object@concentrations[,ind_var_chunks[[k]][i]] <- conc.list.tmp[[k]][,i]
+            # - - - - - - #
+            # Exoenzymes  #
+            # - - - - - - #
+            if(length(object@exoenzymes) > 0) {
+              exec.D <- unlist(lapply(object@exoenzymes, function(x) x@D))
+              ind_variable <- which(apply(object@exoenzymes.conc,2,sd) > 0 & exec.D > 0)
+
+              if(length(ind_variable) > 0) {
+                diff_shere_surface_area <- exec.D[ind_variable] * 60 * 60 * deltaTime # surface area in µm^2 after one iteration step
+                diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
+                diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
+
+                exec.conc.tmp <- list(mat.in  = object@mat.in,
+                                      mat.out = object@mat.out,
+                                      conc    = as.matrix(object@exoenzymes.conc[,ind_variable]),
+                                      n_iter  = diffusion.niter)
+
+                exec.conc.tmp <- indDiff_worker(exec.conc.tmp)
+
+                for(i in 1:length(ind_variable)) {
+                  object@exoenzymes.conc[,ind_variable[i]] <- exec.conc.tmp[,i]
+                }
+
               }
             }
 

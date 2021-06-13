@@ -122,19 +122,20 @@ setMethod(f          = "run.simulation",
 
               cellFieldEnv <- lapply(1:ncells, FUN = function(x) {
                 res <- list()
-                res[["field.id"]]   <- cellFieldEnv[.id == x, field.id]
-                res[["field.dist"]] <- cellFieldEnv[.id == x, field.dist]
-                res[["acc.prop"]]   <- cellFieldEnv[.id == x, acc.prop]
+                res[["field.id"]]    <- cellFieldEnv[.id == x, field.id]
+                res[["field.dist"]]  <- cellFieldEnv[.id == x, field.dist]
+                res[["acc.prop"]]    <- cellFieldEnv[.id == x, acc.prop]
 
-                res[["field.conc"]] <- object@environ@concentrations[res[["field.id"]],]
-                res[["field.cpds"]] <- object@environ@compounds
-                res[["fieldVol"]]   <- object@environ@fieldVol
-                res[["model"]]      <- object@models[[object@cellDT[x, type]]]
-                res[["deltaTime"]]  <- object@deltaTime
+                res[["field.conc"]]  <- object@environ@concentrations[res[["field.id"]],]
+                res[["field.cpds"]]  <- object@environ@compounds
+                res[["field.execs"]] <- names(object@environ@exoenzymes)
+                res[["fieldVol"]]    <- object@environ@fieldVol
+                res[["model"]]       <- object@models[[object@cellDT[x, type]]]
+                res[["deltaTime"]]   <- object@deltaTime
 
-                res[["type"]]       <- object@cellDT[x, type]
-                res[["cMass"]]      <- object@cellDT[x, mass]
-                res[["size"]]       <- object@cellDT[x, size]
+                res[["type"]]        <- object@cellDT[x, type]
+                res[["cMass"]]       <- object@cellDT[x, mass]
+                res[["size"]]        <- object@cellDT[x, size]
 
                 # Chemotaxis
                 res[["CT.x"]]       <- 0
@@ -182,6 +183,16 @@ setMethod(f          = "run.simulation",
 
               object@environ@concentrations[I[,1:2]] <- object@environ@concentrations[I[,1:2]] + I[,3]
               object@environ@concentrations[I[,1:2]] <- ifelse(object@environ@concentrations[I[,1:2]] < 1e-7, 0, object@environ@concentrations[I[,1:2]])
+
+              # exoenzymes
+              I.exec <- rbindlist(lapply(agFBA_results, function(x) x$I.exec.pd))
+              I.exec <- I.exec[, .(concChange = sum(concChange)), by = c("field.id", "concMatInd")]
+              I.exec <- as.matrix(I.exec)
+
+              I.exec[,3] <- ifelse(is.na(I.exec[,3]), 0, I.exec[,3]) # TODO: Check where NA originate come from
+              object@environ@exoenzymes.conc[I.exec[,1:2]] <- object@environ@exoenzymes.conc[I.exec[,1:2]] + I.exec[,3]
+              object@environ@exoenzymes.conc[I.exec[,1:2]] <- ifelse(object@environ@exoenzymes.conc[I.exec[,1:2]] < 1e-7, 0, object@environ@exoenzymes.conc[I.exec[,1:2]])
+              #print(I.exec)
 
               # - - - - - - - - - - - - #
               # (3) compound diffusion  #
@@ -526,6 +537,31 @@ agentFBA_ex <- function(x) {
                        concChange = double(0))
   }
 
+  #------------------------#
+  # Production of Exozymes #
+  #------------------------#
+  if(length(x$model@exoenzymes) > 0) {
+    exec.prod <- cMass_new * x$deltaTime * x$model@exoenzymes.prod / 1000 # Total Exoenzyme production in absolute fmol in this time step and by this cell of its specific mass
+    names(exec.prod) <- x$model@exoenzymes
+
+    field.frac <- max(accCompounds$field.dist) - accCompounds$field.dist
+    field.frac <- field.frac/sum(field.frac)
+
+    exec.prod <- (exec.prod / 1e12) / (x$fieldVol / 1e15) * 1e3 # nM produced if all given to a single field
+
+    exec.pro.mat <- field.frac %*% t(exec.prod)
+
+    exec.concMatInd <- match(colnames(exec.pro.mat), x$field.execs)
+
+    I.exec.pd <- data.table(field.id   = rep(accmat.row2field, ncol(exec.pro.mat)),
+                            concMatInd = rep(exec.concMatInd, each =nrow(exec.pro.mat)),
+                            concChange = as.numeric(exec.pro.mat))
+  } else {
+    I.exec.pd <- data.table(field.id   = integer(0),
+                            concMatInd = integer(0),
+                            concChange = double(0))
+  }
+
   rm(ccbnds)
   rm(sol.fba)
 
@@ -537,7 +573,8 @@ agentFBA_ex <- function(x) {
               ex.fluxes = ex.flx,
               accmat    = accmat,
               I.up      = I.up,
-              I.pd      = I.pd
+              I.pd      = I.pd,
+              I.exec.pd = I.exec.pd
   ))
 }
 

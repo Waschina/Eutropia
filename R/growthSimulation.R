@@ -1,18 +1,30 @@
 
 #' Structure of the S4 class "growthSimulation"
 #'
-#' Structure of the S4 class \code{growthSimulation} as framework for the grwoth environment and container for agent-based flux balance analysis.
-#' @import Matrix Rcpp
+#' @description Structure of the S4 class \code{growthSimulation} as framework
+#' for the growth environment and container for agent-based flux balance
+#' analysis.
+#'
+#' @aliases growthSimulation
+#'
 #' @exportClass growthSimulation
 #'
-#' @slot n_rounds integer for the number of simulation rounds that were already performed for this \code{growthSimulation} object.
-#' @slot deltaTime double for length of each time step for the simulation in hours.
-#' @slot rMotion double. Maximum x- and y distance a cell can travel by means of random movement per simulation round.Unit: µm per minute.
-#' @slot models list for \code{Organism} objects to represent the different strains in the simulation.
-#' @slot history list with recordings of simulation status information at each simulation round.
-#' @slot cellDT Data table with individual cell information (e.g. size, position, velocity, type)
-#' @slot universePolygon Matrix specifying the corners of the polygon that defined the growth environment boundaries. 2-dimensional: x and y.
-#' @slot environ Object of S4-class \code{growthEnvironment}, that specifies the environment mesh layout, compounds, and their concentrations.
+#' @slot n_rounds integer for the number of simulation rounds that were already
+#' performed for this \code{growthSimulation} object.
+#' @slot deltaTime double for length of each time step for the simulation in
+#' hours.
+#' @slot rMotion double. Maximum x- and y distance a cell can travel by means of
+#' random movement per simulation round. Unit: µm per minute.
+#' @slot models List for \link{Organism} objects to represent the different
+#' strains in the simulation.
+#' @slot history list with recordings of simulation status information at each
+#' simulation round.
+#' @slot cellDT Data table with individual cell information (e.g. size,
+#' position, velocity, type)
+#' @slot universePolygon Matrix specifying the corners of the polygon that
+#' defines the growth environment boundaries. 2-dimensional: x and y.
+#' @slot environ Object of S4-class \link{growthEnvironment}, that specifies the
+#' environment mesh layout, compounds, and their concentrations.
 setClass("growthSimulation",
 
          slots = c(
@@ -124,8 +136,8 @@ setMethod(f          = "init.simulation",
 #'
 #' @description Adds an organism an its genome-scale metabolic network model to the growth simulation object.
 #'
-#' @param object S4-object of type \code{growthSimulation}.
-#' @param model The organisms metabolic model of S4-type \code{sybil::modelorg}
+#' @param object S4-object of type \link{growthSimulation}.
+#' @param model The organisms metabolic model of S4-type \link[sybil]{modelorg}
 #' @param name Character for the name of the model, that will also be used for plotting.
 #' @param ncells integer. Number of initial cells to be added to the growth simulation.
 #' @param coords (optional) A two column numerical matrix specifying the coordinates (1st column x, 2nd column y) of the initial cells. If provided, the number of rows should be equal to \code{ncells}. Default: NULL
@@ -155,7 +167,7 @@ setMethod(f          = "init.simulation",
 #' this package changes the value to it's negative counterpart if a positive value
 #' is provided.
 #'
-#' @return Object of class \code{growthSimulation}.
+#' @return Object of class \link{growthSimulation}.
 #'
 #' @references
 #'  \url{https://bionumbers.hms.harvard.edu/bionumber.aspx?id=100008} \cr
@@ -842,7 +854,7 @@ setMethod(f = "plot.environment",
               }
             }
 
-            # which layer to plot? By deafult: Baseplane
+            # which layer to plot? By default: Baseplane
             zvals <- sort(unique(object@environ@field.pts@coords[,3]))
             zvalOI <- zvals[1]
             if(layer < 0 | layer > (length(zvals)-1) | layer %% 1 != 0) {

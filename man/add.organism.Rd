@@ -27,9 +27,9 @@ add.organism(
 )
 }
 \arguments{
-\item{object}{S4-object of type \code{growthSimulation}.}
+\item{object}{S4-object of type \link{growthSimulation}.}
 
-\item{model}{The organisms metabolic model of S4-type \code{sybil::modelorg}}
+\item{model}{The organisms metabolic model of S4-type \link[sybil]{modelorg}}
 
 \item{name}{Character for the name of the model, that will also be used for plotting.}
 
@@ -64,7 +64,7 @@ add.organism(
 \item{open.bounds}{Numeric value that is used to reset lower bounds of exchange reactions, which have a current lower bound of 0. See Details.}
 }
 \value{
-Object of class \code{growthSimulation}.
+Object of class \link{growthSimulation}.
 }
 \description{
 Adds an organism an its genome-scale metabolic network model to the growth simulation object.
