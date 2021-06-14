@@ -49,7 +49,8 @@ setOldClass("growthSimulation")
 #' @param mets Character vector with the compound IDs that participate in reaction
 #' catalyzed by the exoenzyme.
 #' @param stoich Numeric vector of the same length and order as `mets` specifying
-#' the stoichiometries of compounds
+#' the stoichiometries of compounds. First entry (the substrate's coefficient)
+#' should be -1.
 #' @param production.rate Numeric indicating the production rate of the enzyme
 #' by the organism. Unit: mg Enzyme / gDW cell. Default: 0.01
 #' @param name Character with an optional name for the enzyme.
@@ -95,6 +96,9 @@ setMethod(f          = "add.exoenzyme",
             if(id %in% names(object@environ@exoenzymes)) {
               stop(paste0("Exoenzmye with ID '",id,"' is already present."))
             }
+
+            if(stoich[1] != -1)
+              stop("First enty of 'stoich' represents the stoichiometric coefficient of the substrate and should be -1.")
 
             if(production.rate < 0)
               stop("Production rate should be postive.")

@@ -31,7 +31,8 @@ exoenzyme production is linked}
 catalyzed by the exoenzyme.}
 
 \item{stoich}{Numeric vector of the same length and order as `mets` specifying
-the stoichiometries of compounds}
+the stoichiometries of compounds. First entry (the substrate's coefficient)
+should be -1.}
 
 \item{production.rate}{Numeric indicating the production rate of the enzyme
 by the organism. Unit: mg Enzyme / gDW cell. Default: 0.01}

@@ -18,7 +18,8 @@ Depends:
     rgeos (>= 0.5), 
     cplexAPI (>= 1.4.0), 
     hms (>= 0.5.3), 
-    parallel (>= 4.0.4)
+    parallel (>= 4.0.4),
+    lamW (>= 2.1.0)
 License: GPL-3.0
 SystemRequirements: C++11
 Encoding: UTF-8

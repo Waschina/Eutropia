@@ -194,6 +194,44 @@ setMethod(f          = "run.simulation",
               object@environ@exoenzymes.conc[I.exec[,1:2]] <- ifelse(object@environ@exoenzymes.conc[I.exec[,1:2]] < 1e-7, 0, object@environ@exoenzymes.conc[I.exec[,1:2]])
               #print(I.exec)
 
+              # - - - - - - - - - - - - - #
+              # (2.5) Exoenzyme activity  #
+              # - - - - - - - - - - - - - #
+              if(length(object@environ@exoenzymes) > 0) {
+                if(verbose > 1)
+                  cat("... exoenzyme activity\n", sep ='')
+
+                # Catalysis
+                k <- 1
+                for(exec in object@environ@exoenzymes) {
+                  exec.vmax <- exec@Kcat * object@environ@exoenzymes.conc[,k] / 1e6
+                  met_inds <- match(exec@mets, sim@environ@compounds)
+
+                  S_0 <- object@environ@concentrations[,met_inds[1]] # current Substrate concentration
+
+                  S_t <- exec@Km * lambertW0(S_0/exec@Km * exp((S_0 - exec.vmax * object@deltaTime * 60 * 60)/exec@Km))
+
+                  dS <- S_0 - S_t
+
+                  # update concentrations
+                  met_inds <- met_inds[!object@environ@conc.isConstant[met_inds]] # skip constant compounds
+                  if(length(met_inds)>0) {
+                    for(i in 1:length(met_inds)) {
+                      object@environ@concentrations[,met_inds[i]] <-
+                        object@environ@concentrations[,met_inds[i]] + exec@stoich[i] * dS
+                    }
+                  }
+
+                  k <- k + 1
+                }
+
+                # Exoenzyme decay
+                all_lambda <- unlist(lapply(object@environ@exoenzymes, function(x) x@lambda))
+                for(i in 1:length(all_lambda))
+                  object@environ@exoenzymes.conc[,i] <- object@environ@exoenzymes.conc[,i] * exp(-all_lambda[i] * object@deltaTime)
+              }
+
+
               # - - - - - - - - - - - - #
               # (3) compound diffusion  #
               # - - - - - - - - - - - - #
@@ -444,7 +482,7 @@ agentFBA_ex <- function(x) {
                                 deltaTime  = x$deltaTime)
 
   # (2.1) agentFBA(model, envGrids, curMass) for independent cells
-  # constrain model to lcoal environment
+  # constrain model to local environment
   ccbnds <- changeColsBnds(problem(fork_mods[[x$type]]), updatedEX$ex.react.ind,
                            lb = updatedEX$ex.react.lb, ub = x$model@mod@uppbnd[updatedEX$ex.react.ind])
 
