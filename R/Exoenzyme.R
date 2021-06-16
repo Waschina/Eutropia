@@ -52,15 +52,22 @@ setOldClass("growthSimulation")
 #' the stoichiometries of compounds. First entry (the substrate's coefficient)
 #' should be -1.
 #' @param production.rate Numeric indicating the production rate of the enzyme
-#' by the organism. Unit: mg Enzyme / gDW cell. Default: 0.01
+#' by the organism. Unit: nmol enzyme catalytic centers per gDW cells per hr.
+#' Default: 0.01
 #' @param name Character with an optional name for the enzyme.
-#' @param D Diffusion coefficient of the enzyme. Unit µm^2/s. Dedault: 10
+#' @param D Diffusion coefficient of the enzyme. Unit µm^2/s. Default: 10
 #' @param lambda Numeric indicating the decay rate of the enzyme. Unit: per hour.
 #' Default: 0.4 . The enzyme's half life can be calculated by ln(2)/lambda
-#' @param Kcat Numeric for enzyme's turnover rate. Unit: 1/s . Default: 1000
-#' @param Km Numeric for Menten-Michaelis Km value. Unit: mM . Default: 25
+#' @param Kcat Numeric for enzyme's turnover rate. Unit: 1/s . Default: 10000
+#' @param Km Numeric for Menten-Michaelis Km value. Unit: mM . Default: 100
 #' @param init.conc Numeric indicating the initial concentration of the enzyme
 #' in the growth environment. Unit: nM . Default: 0
+#'
+#' @details
+#' Exoenzymes can differ markedly in their kinetic parameters. The defaults
+#' provided here do not represent a typical enzymes, but are chosen based
+#' on data from inveratases (EC 3.2.1.26) from Zymomonas mobilis. Kcat (~10000 s^-1)
+#' and Km (100 mM) were obtained from https://www.brenda-enzymes.org/enzyme.php?ecno=3.2.1.26&Suchword=&reference=&UniProtAcc=&organism%5B%5D=Zymomonas+mobilis&show_tm=0.
 #'
 #' @export
 setGeneric(name="add.exoenzyme",
@@ -86,8 +93,8 @@ setMethod(f          = "add.exoenzyme",
                                 name = NULL,
                                 D = 10,
                                 lambda = 0.4,
-                                Kcat = 1000,
-                                Km = 25,
+                                Kcat = 10000,
+                                Km = 100,
                                 init.conc = 0) {
 
             ind <- length(object@environ@exoenzymes) + 1

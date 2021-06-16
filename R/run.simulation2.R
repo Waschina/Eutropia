@@ -205,7 +205,7 @@ setMethod(f          = "run.simulation",
                 k <- 1
                 for(exec in object@environ@exoenzymes) {
                   exec.vmax <- exec@Kcat * object@environ@exoenzymes.conc[,k] / 1e6
-                  met_inds <- match(exec@mets, sim@environ@compounds)
+                  met_inds <- match(exec@mets, object@environ@compounds)
 
                   S_0 <- object@environ@concentrations[,met_inds[1]] # current Substrate concentration
 
@@ -214,12 +214,14 @@ setMethod(f          = "run.simulation",
                   dS <- S_0 - S_t
 
                   # update concentrations
-                  met_inds <- met_inds[!object@environ@conc.isConstant[met_inds]] # skip constant compounds
-                  if(length(met_inds)>0) {
-                    for(i in 1:length(met_inds)) {
+                  #met_inds <- met_inds[!object@environ@conc.isConstant[met_inds]] # skip constant compounds
+                  for(i in 1:length(met_inds)) {
+                    # skip constant compounds
+                    if(object@environ@conc.isConstant[met_inds[i]] == F) {
                       object@environ@concentrations[,met_inds[i]] <-
                         object@environ@concentrations[,met_inds[i]] + exec@stoich[i] * dS
                     }
+
                   }
 
                   k <- k + 1
@@ -311,6 +313,8 @@ setMethod(f          = "run.simulation",
                 wield(collision_force, radius = object@cellDT$size/2, n_iter = 50, strength = 0.7) %>%
                 impose(velocity_constraint,
                        vmax = cvmax[object@cellDT$type]) %>%
+                wield(trap_force, polygon = object@universePolygon, strength = 0.7,
+                      min_dist = 5, distance_falloff = 2) %>%
                 impose(polygon_constraint,
                        polygon = object@universePolygon)
 
@@ -328,7 +332,7 @@ setMethod(f          = "run.simulation",
               object@cellDT$x.vel <- sim_new$velocity[,1]
               object@cellDT$y.vel <- sim_new$velocity[,2]
 
-              #print(plot.cells(object))
+              print(plot.cells(object))
 
               # - - - - - - - - #
               # (6) Record data #
