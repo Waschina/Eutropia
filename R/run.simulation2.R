@@ -305,16 +305,9 @@ setMethod(f          = "run.simulation",
                                                     y = object@cellDT$y,
                                                     x_vel = object@cellDT$x.vel + r_motion[,1],
                                                     y_vel = object@cellDT$y.vel + r_motion[,2])) %>%
-                # wield(random_force,
-                #       xmin = -object@rMotion,
-                #       xmax =  object@rMotion,
-                #       ymin = -object@rMotion,
-                #       ymax =  object@rMotion) %>%
                 wield(collision_force, radius = object@cellDT$size/2, n_iter = 50, strength = 0.7) %>%
                 impose(velocity_constraint,
                        vmax = cvmax[object@cellDT$type]) %>%
-                wield(trap_force, polygon = object@universePolygon, strength = 0.7,
-                      min_dist = 5, distance_falloff = 2) %>%
                 impose(polygon_constraint,
                        polygon = object@universePolygon)
 
