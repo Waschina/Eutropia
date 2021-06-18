@@ -8,17 +8,30 @@
 #'
 #' @param object An object of class \code{growthSimulation}
 #' @param niter Number of rounds to simulate
-#' @param verbose Control the 'chattiness' of the simulation logs. 0 - no logs, 1 - only main logs, 2 - chaffinch.
-#' @param lim_cells Simulation terminates of total number of cells exceed this value.
-#' @param lim_time Simulation terminated after the first iteration that finished after this time limit (in minutes).
-#' @param record Character vector that indicated which simulation variables should be recorded after each simulation round. See Details.
-#' @param n.cores Number of CPUs to use for parallelisation. If NULL (default), it will use the number of detectable cores minus 1 and in maximum 10 cores.
+#' @param verbose Control the 'chattiness' of the simulation logs. 0 - no logs,
+#' 1 - only main logs, 2 - chaffinch.
+#' @param lim_cells Simulation terminates of total number of cells exceed this
+#' value.
+#' @param lim_time Simulation terminated after the first iteration that finished
+#' after this time limit (in minutes).
+#' @param convergence.e Numeric indicating when community growth (pg) is
+#' considered to have reached convergence
+#' @param record Character vector that indicated which simulation variables
+#' should be recorded after each simulation round. See Details.
+#' @param n.cores Number of CPUs to use for parallelisation. If NULL (default),
+#' it will use the number of detectable cores minus 1 and in maximum 10 cores.
 #'
-#' @details TODO.
+#' @details
+#' Convergence is checked by calculating the ratio:
+#' \deqn{c := | a / min(a_{i-1},...,a_{i-5}) - 1 |}
+#' \eqn{a_i} is the total biomass at iteration \eqn{i}. The simulation
+#' terminates if \eqn{c} is below `convergence.e`. Thus, one can expect
+#' longer simulations when reducing `convergence.e`.
 #'
 #' @export
 setGeneric(name="run.simulation",
-           def=function(object, niter, verbose = 1, lim_cells = 1e5, lim_time = 300,
+           def=function(object, niter, verbose = 1, lim_cells = 1e5,
+                        lim_time = 300, convergence.e = 1e-4,
                         record = c("cells","global_compounds"), n.cores = NULL, ...)
            {
              standardGeneric("run.simulation")
@@ -29,8 +42,10 @@ setGeneric(name="run.simulation",
 setMethod(f          = "run.simulation",
           signature  = signature(object    = "growthSimulation",
                                  niter     = "numeric"),
-          definition = function(object, niter, verbose = 1, lim_cells = 1e5, lim_time = 300,
-                                record = c("cells","global_compounds"), n.cores = NULL) {
+          definition = function(object, niter, verbose = 1, lim_cells = 1e5,
+                                lim_time = 300, convergence.e = 1e-4,
+                                record = c("cells","global_compounds"),
+                                n.cores = NULL) {
 
             # initialise multi core processing (with a copy of each model in warm for each parallel fork)
             cmad <- unlist(lapply(object@models, function(x) x@cellMassAtDivision))
@@ -62,9 +77,14 @@ setMethod(f          = "run.simulation",
               unlist(lapply(ctype, function(x) object@models[[x]]@scavengeDist))
             }
 
+            # track convergence of growth
+            n_conv <- 5
+            BM_converged <- F
+            last_smass  <- rep(NA_real_, n_conv)
+
             #ram_usage <<- c(mem_used())
             # while loop that checks termination criteria before starting a new round
-            while(j <= niter & difftime(Sys.time(), t_start, units = "mins") < lim_time & nrow(object@cellDT) < lim_cells) {
+            while(j <= niter & difftime(Sys.time(), t_start, units = "mins") < lim_time & nrow(object@cellDT) < lim_cells & !BM_converged) {
               simRound <- object@n_rounds + 1
 
               # # give workers the current metabolite concentrations
@@ -76,6 +96,15 @@ setMethod(f          = "run.simulation",
               #cellDT <- copy(object@cellDT)
               ncells <- nrow(object@cellDT)
               smass  <- sum(object@cellDT$mass)
+
+              # check convergence
+              last_smass <- c(last_smass[2:n_conv], smass)
+              if(!any(is.na(last_smass))) {
+                dBM <- abs(last_smass[n_conv] / min(last_smass[-n_conv]) - 1)
+                print(dBM)
+                if(dBM < convergence.e)
+                  BM_converged <- TRUE
+              }
 
               # get elapsed time
               elapT <- round(difftime(Sys.time(), t_start, units = "secs"))
@@ -337,18 +366,15 @@ setMethod(f          = "run.simulation",
                 object@history[[simRound]] <- list()
 
                 # cell positions
-                if("cells" %in% record) {
-                  object@history[[simRound]]$cells <- copy(object@cellDT)
-                }
+                object@history[[simRound]]$cells <- copy(object@cellDT)
 
                 # global metabolite concentrations (only variable)
-                if("global_compounds" %in% record) {
-                  ind_var <- !object@environ@conc.isConstant
-                  dt_conc_tmp <- data.table(cpd.id = object@environ@compounds[ind_var],
-                                            cpd.name = object@environ@compound.names[ind_var],
-                                            global_concentration = apply(object@environ@concentrations[,ind_var],2,mean))
-                  object@history[[simRound]]$global_compounds <- dt_conc_tmp
-                }
+                ind_var <- !object@environ@conc.isConstant
+                dt_conc_tmp <- data.table(cpd.id = object@environ@compounds[ind_var],
+                                          cpd.name = object@environ@compound.names[ind_var],
+                                          global_concentration = apply(object@environ@concentrations[,ind_var],2,mean))
+                object@history[[simRound]]$global_compounds <- dt_conc_tmp
+
 
                 # Cell-individual exchange fluxes in fmol
                 cell.ex.fluxes <- lapply(agFBA_results, function(icell) {

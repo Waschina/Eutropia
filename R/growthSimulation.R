@@ -434,7 +434,8 @@ setMethod(f          = "show",
 setGeneric(name="add.compounds",
            def=function(object, compounds, concentrations,
                         compound.names = NULL, is.constant = NULL,
-                        compound.D  = NULL, ...)
+                        compound.D  = NULL,
+                        ...)
            {
              standardGeneric("add.compounds")
            }
@@ -447,7 +448,8 @@ setMethod(f          = "add.compounds",
           definition = function(object, compounds, concentrations,
                                 compound.names = NULL,
                                 is.constant = NULL,
-                                compound.D  = NULL, ...) {
+                                compound.D  = NULL,
+                                ...) {
 
             default_D <- 75
 
@@ -527,6 +529,16 @@ setMethod(f          = "add.compounds",
 
             return(object)
           }
+)
+
+
+setGeneric(name="dilute.compounds",
+           def=function(object, dilution.factor,
+                        compounds = NULL, incl.constant = F,
+                        ...)
+           {
+             standardGeneric("dilute.compounds")
+           }
 )
 
 

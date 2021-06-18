@@ -10,6 +10,7 @@ run.simulation(
   verbose = 1,
   lim_cells = 1e+05,
   lim_time = 300,
+  convergence.e = 1e-04,
   record = c("cells", "global_compounds"),
   n.cores = NULL,
   ...
@@ -20,19 +21,31 @@ run.simulation(
 
 \item{niter}{Number of rounds to simulate}
 
-\item{verbose}{Control the 'chattiness' of the simulation logs. 0 - no logs, 1 - only main logs, 2 - chaffinch.}
+\item{verbose}{Control the 'chattiness' of the simulation logs. 0 - no logs,
+1 - only main logs, 2 - chaffinch.}
 
-\item{lim_cells}{Simulation terminates of total number of cells exceed this value.}
+\item{lim_cells}{Simulation terminates of total number of cells exceed this
+value.}
 
-\item{lim_time}{Simulation terminated after the first iteration that finished after this time limit (in minutes).}
+\item{lim_time}{Simulation terminated after the first iteration that finished
+after this time limit (in minutes).}
 
-\item{record}{Character vector that indicated which simulation variables should be recorded after each simulation round. See Details.}
+\item{convergence.e}{Numeric indicating when community growth (pg) is
+considered to have reached convergence}
 
-\item{n.cores}{Number of CPUs to use for parallelisation. If NULL (default), it will use the number of detectable cores minus 1 and in maximum 10 cores.}
+\item{record}{Character vector that indicated which simulation variables
+should be recorded after each simulation round. See Details.}
+
+\item{n.cores}{Number of CPUs to use for parallelisation. If NULL (default),
+it will use the number of detectable cores minus 1 and in maximum 10 cores.}
 }
 \description{
 Run the agent- and FBA-based simulation.
 }
 \details{
-TODO.
+Convergence is checked by calculating the ratio:
+\deqn{c := | a / min(a_{i-1},...,a_{i-5}) - 1 |}
+\eqn{a_i} is the total biomass at iteration \eqn{i}. The simulation
+terminates if \eqn{c} is below `convergence.e`. Thus, one can expect
+longer simulations when reducing `convergence.e`.
 }
