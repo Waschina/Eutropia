@@ -36,5 +36,9 @@ defines the growth environment boundaries. 2-dimensional: x and y.}
 
 \item{\code{environ}}{Object of S4-class \link{growthEnvironment}, that specifies the
 environment mesh layout, compounds, and their concentrations.}
+
+\item{\code{cpdRecordFile}}{File name, in which intermediate compound concentrations
+are recorded if turned on in \link{run.simulation}. File is meant as internal
+resource and not for direct analysis outside of this package.}
 }}
 

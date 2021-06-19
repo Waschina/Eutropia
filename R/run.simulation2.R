@@ -6,7 +6,7 @@
 #'
 #' @description Run the agent- and FBA-based simulation.
 #'
-#' @param object An object of class \code{growthSimulation}
+#' @param object An object of class \link{growthSimulation}
 #' @param niter Number of rounds to simulate
 #' @param verbose Control the 'chattiness' of the simulation logs. 0 - no logs,
 #' 1 - only main logs, 2 - chaffinch.
@@ -16,12 +16,36 @@
 #' after this time limit (in minutes).
 #' @param convergence.e Numeric indicating when community growth (pg) is
 #' considered to have reached convergence
-#' @param record Character vector that indicated which simulation variables
-#' should be recorded after each simulation round. See Details.
+#' @param record Character vector that indicates, which simulation variables
+#' should be recorded after each simulation iteration. See Details.
 #' @param n.cores Number of CPUs to use for parallelisation. If NULL (default),
 #' it will use the number of detectable cores minus 1 and in maximum 10 cores.
+#' @param on.iteration An optional function that is performed at the end of each
+#' iteration and returns again an object of class \link{growthSimulation}.
+#' @param live.plot Logical. If TRUE, positions of cells are plotted at each
+#' iteration. Caution: May reduce performance of simulation. Default: FALSE
+#' @param ... Additional arguments to `on.iteration`
 #'
 #' @details
+#' Recording: The cells' positions, masses, sizes, and metabolite exchanges are
+#' always recorded. Also recorded are the global metabolite concentrations. Due
+#' to memory considerations, local metabolite concentrations are not recorded
+#' by default. However, users can specify which concentrations are tracked during
+#' the simulation using the `record` option. E.g.
+#'
+#' \code{record = c("compound_cpd00029_e0","compound_cpd00211_e0")}
+#'
+#' records the concentration fo the to two metabolites `cpd00029_e0` and
+#' `cpd00211_e0`. All compound concentration can be recorded with
+#'
+#' \code{record = "compounds"} ,
+#'
+#' yet, is not advised as this could be storage- and time-consuming. Compound
+#' concentrations are not stored in memory but on the hard drive in a file
+#' within the working directory. Tracked concentrations can also be plotted with
+#' \link{plot.environment}.
+#' Exoenzyme concentrations cannot be recorded in the current version.\cr
+#'
 #' Convergence is checked by calculating the ratio:
 #' \deqn{c := | a / min(a_{i-1},...,a_{i-5}) - 1 |}
 #' \eqn{a_i} is the total biomass at iteration \eqn{i}. The simulation
@@ -32,7 +56,8 @@
 setGeneric(name="run.simulation",
            def=function(object, niter, verbose = 1, lim_cells = 1e5,
                         lim_time = 300, convergence.e = 1e-4,
-                        record = c("cells","global_compounds"), n.cores = NULL, ...)
+                        record = NULL, n.cores = NULL,
+                        live.plot = F, on.iteration = NULL, ...)
            {
              standardGeneric("run.simulation")
            },
@@ -44,8 +69,10 @@ setMethod(f          = "run.simulation",
                                  niter     = "numeric"),
           definition = function(object, niter, verbose = 1, lim_cells = 1e5,
                                 lim_time = 300, convergence.e = 1e-4,
-                                record = c("cells","global_compounds"),
-                                n.cores = NULL) {
+                                record = NULL,
+                                n.cores = NULL,
+                                live.plot = F,
+                                on.iteration = NULL, ...) {
 
             # initialise multi core processing (with a copy of each model in warm for each parallel fork)
             cmad <- unlist(lapply(object@models, function(x) x@cellMassAtDivision))
@@ -56,11 +83,24 @@ setMethod(f          = "run.simulation",
             #fork_deltaTime    <- object@deltaTime
             #fork_fieldVol     <- object@environ@fieldVol
             #fork_envCompounds <- object@environ@compounds
-            cat("Initalising simulations using",n.cores,"CPU cores...\n")
+            if(verbose >= 1)
+              cat("Initalising simulations using",n.cores,"CPU cores...\n")
             cl <- makeCluster(n.cores)
 
+            # Check if cplexAPI is installed
+            lpsolver <- "glpkAPI"
+            okcode   <- 5
+            if("cplexAPI" %in% rownames(installed.packages())) {
+              lpsolver <- "cplexAPI"
+              okcode   <- 1
+            }
+            lpsolver <- "glpkAPI"; okcode <- 5
+            if(verbose >= 1)
+              cat(paste0("LP-solver: ", lpsolver, "\n"))
+
             pre_mod_list <- lapply(1:n.cores, function(x) { return(object@models) })
-            fork_ids <- clusterApply(cl, pre_mod_list, fun = init_warm_mods)
+            fork_ids <- clusterApply(cl, pre_mod_list, fun = init_warm_mods,
+                                     lpsolver = lpsolver, okcode = okcode)
             rm(pre_mod_list)
 
             # keeping an eye on time
@@ -101,7 +141,7 @@ setMethod(f          = "run.simulation",
               last_smass <- c(last_smass[2:n_conv], smass)
               if(!any(is.na(last_smass))) {
                 dBM <- abs(last_smass[n_conv] / min(last_smass[-n_conv]) - 1)
-                print(dBM)
+                #print(dBM)
                 if(dBM < convergence.e)
                   BM_converged <- TRUE
               }
@@ -130,8 +170,9 @@ setMethod(f          = "run.simulation",
                 res[["x"]]      <- object@cellDT[i, x]
                 res[["y"]]      <- object@cellDT[i, y]
                 res[["size"]]   <- object@cellDT[i, size]
-                res[["scvr"]]   <- get_scv_radius(object@cellDT[i, type])
-                # TODO: Theres probably a smater way of doing the next command - but works for now
+                res[["scvr"]]   <- get_scv_radius(object@cellDT[i, type]) # scavenge radius
+                # TODO: There's probably a smarter way of doing the next command - but works for now
+                # it gets all grid field in the cube surrounding the cell
                 res[["gridLC"]] <- gridDT[abs(x - res[["x"]]) <= (res[["size"]] /2 + res[["scvr"]]) &
                                             abs(y - res[["y"]]) <= (res[["size"]] /2 + res[["scvr"]]) &
                                             abs(z - 0                  ) <= (res[["size"]] /2 + res[["scvr"]])]
@@ -198,6 +239,8 @@ setMethod(f          = "run.simulation",
 
               agFBA_results <- parLapply(cl, cellFieldEnv, agentFBA_ex)
 
+              #print(table(unlist(lapply(agFBA_results, function(x) x$fba.stat))))
+
               # update the environment
               if(verbose > 1)
                 cat("... update environment\n", sep ='')
@@ -207,11 +250,11 @@ setMethod(f          = "run.simulation",
               I <- I[concMatInd %in% ind_var]
               I <- as.matrix(I)
 
-              I[,3] <- ifelse(is.na(I[,3]), 0, I[,3]) # TODO: Check where NA originate come from
+              I[,3] <- ifelse(is.na(I[,3]), 0, I[,3]) # TODO: Check where NA originate from
               #print(I)
 
               object@environ@concentrations[I[,1:2]] <- object@environ@concentrations[I[,1:2]] + I[,3]
-              object@environ@concentrations[I[,1:2]] <- ifelse(object@environ@concentrations[I[,1:2]] < 1e-7, 0, object@environ@concentrations[I[,1:2]])
+              object@environ@concentrations[I[,1:2]] <- ifelse(object@environ@concentrations[I[,1:2]] < 1e-12, 0, object@environ@concentrations[I[,1:2]])
 
               # exoenzymes
               I.exec <- rbindlist(lapply(agFBA_results, function(x) x$I.exec.pd))
@@ -220,7 +263,7 @@ setMethod(f          = "run.simulation",
 
               I.exec[,3] <- ifelse(is.na(I.exec[,3]), 0, I.exec[,3]) # TODO: Check where NA originate come from
               object@environ@exoenzymes.conc[I.exec[,1:2]] <- object@environ@exoenzymes.conc[I.exec[,1:2]] + I.exec[,3]
-              object@environ@exoenzymes.conc[I.exec[,1:2]] <- ifelse(object@environ@exoenzymes.conc[I.exec[,1:2]] < 1e-7, 0, object@environ@exoenzymes.conc[I.exec[,1:2]])
+              object@environ@exoenzymes.conc[I.exec[,1:2]] <- ifelse(object@environ@exoenzymes.conc[I.exec[,1:2]] < 1e-12, 0, object@environ@exoenzymes.conc[I.exec[,1:2]])
               #print(I.exec)
 
               # - - - - - - - - - - - - - #
@@ -354,56 +397,80 @@ setMethod(f          = "run.simulation",
               object@cellDT$x.vel <- sim_new$velocity[,1]
               object@cellDT$y.vel <- sim_new$velocity[,2]
 
-              print(plot.cells(object))
+              # Live Plot
+              if(live.plot)
+                print(plot.cells(object))
 
               # - - - - - - - - #
               # (6) Record data #
               # - - - - - - - - #
-              if(!is.null(record)) {
-                if(verbose > 1)
-                  cat("... recording simulation data\n", sep ='')
+              if(verbose > 1)
+                cat("... recording simulation data\n", sep ='')
 
-                object@history[[simRound]] <- list()
+              object@history[[simRound]] <- list()
 
-                # cell positions
-                object@history[[simRound]]$cells <- copy(object@cellDT)
+              # cell positions
+              object@history[[simRound]]$cells <- copy(object@cellDT)
 
-                # global metabolite concentrations (only variable)
-                ind_var <- !object@environ@conc.isConstant
-                dt_conc_tmp <- data.table(cpd.id = object@environ@compounds[ind_var],
-                                          cpd.name = object@environ@compound.names[ind_var],
-                                          global_concentration = apply(object@environ@concentrations[,ind_var],2,mean))
-                object@history[[simRound]]$global_compounds <- dt_conc_tmp
+              # global metabolite concentrations (only variable)
+              ind_var <- !object@environ@conc.isConstant
+              dt_conc_tmp <- data.table(cpd.id = object@environ@compounds[ind_var],
+                                        cpd.name = object@environ@compound.names[ind_var],
+                                        global_concentration = apply(object@environ@concentrations[,ind_var],2,mean))
+              object@history[[simRound]]$global_compounds <- dt_conc_tmp
 
 
-                # Cell-individual exchange fluxes in fmol
-                cell.ex.fluxes <- lapply(agFBA_results, function(icell) {
-                  data.table(compound = names(icell$ex.fluxes),
-                             exflux   = icell$ex.fluxes)
-                })
-                cell.ex.fluxes <- rbindlist(cell.ex.fluxes, idcol = "cell")
-                object@history[[simRound]]$cell.exchanges <- cell.ex.fluxes
+              # Cell-individual exchange fluxes in fmol
+              cell.ex.fluxes <- lapply(agFBA_results, function(icell) {
+                data.table(compound = names(icell$ex.fluxes),
+                           exflux   = icell$ex.fluxes)
+              })
+              cell.ex.fluxes <- rbindlist(cell.ex.fluxes, idcol = "cell")
+              object@history[[simRound]]$cell.exchanges <- cell.ex.fluxes
 
-                # specific compound concentrations per grids
-                if(any(grepl("^compound_", record)) | ("compounds" %in% record)) {
-                  COI <- record[grepl("^compound_", record)] # metabolites of interest
-                  COI <- gsub("^compound_","",COI)
-                  COI <- COI[COI %in% object@environ@compounds]
-                  if("compounds" %in% record)
-                    COI <- object@environ@compounds
+              # specific compound concentrations per grids
+              if(!is.null(record) && (any(grepl("^compound_", record)) | ("compounds" %in% record))) {
+                COI <- record[grepl("^compound_", record)] # metabolites of interest
+                COI <- gsub("^compound_","",COI)
+                COI <- COI[COI %in% object@environ@compounds]
+                if("compounds" %in% record)
+                  COI <- object@environ@compounds
 
-                  if(length(COI > 0)) {
-                    COI.ind <- match(COI, object@environ@compounds)
+                if(length(COI > 0)) {
+                  n_records <- sum(unlist(lapply(object@history, function(x) !is.null(x$compounds))))
 
-                    COI.rec <- object@environ@concentrations[,COI.ind]
-                    colnames(COI.rec) <- object@environ@compounds[COI.ind]
+                  COI.ind <- match(COI, object@environ@compounds)
+                  COI.rec <- object@environ@concentrations[,COI.ind, drop = FALSE]
+                  COI.rec <- data.table(ifelse(COI.rec < 1e-12, 0, COI.rec))
 
-                    object@history[[simRound]]$compound <- COI.rec
-                  }
+                  # save compound recording in recording file
+                  fwrite(COI.rec, file = object@cpdRecordFile, append = TRUE,
+                         col.names = FALSE, quote = FALSE)
+
+                  # save order of compounds
+                  object@history[[simRound]]$compounds <- object@environ@compounds[COI.ind]
+
+                  # save line ranges in recording file
+                  object@history[[simRound]]$compounds.range <- c(n_records * object@environ@nfields + 1,
+                                                                  (n_records+1) * object@environ@nfields)
                 }
 
                 # TODO: Record individual fluxes
               }
+
+              # - - - - - - - - - - - - - - - - - - - - - - - #
+              # (7) Apply user function to simulation object  #
+              # - - - - - - - - - - - - - - - - - - - - - - - #
+              if (!is.null(on.iteration)) {
+                tmpobj <- on.iteration(object,
+                                       ...
+                )
+                if (class(tmpobj) == "growthSimulation") object <- tmpobj
+              }
+
+              # - - - - - - - - - #
+              # Finish iteration  #
+              # - - - - - - - - - #
 
               # small cell summary
               if(verbose > 0) {
@@ -435,11 +502,12 @@ setMethod(f          = "run.simulation",
 #
 #
 #
-init_warm_mods <- function(x) {
+init_warm_mods <- function(x, lpsolver, okcode) {
   require(EcoAgents)
-  SYBIL_SETTINGS("SOLVER","cplexAPI")
-  #sybil::SYBIL_SETTINGS("METHOD", "hybbaropt") # Experimental
-  #tid <<- x
+
+  SYBIL_SETTINGS("SOLVER",lpsolver)
+  ok <<- okcode
+
   fork_mods <- list()
   for(mi in names(x)) {
     fork_mods[[mi]] <- sysBiolAlg(x[[mi]]@mod,
@@ -447,9 +515,7 @@ init_warm_mods <- function(x) {
                                   pFBAcoeff = 1e-6)
   }
   fork_mods <<- fork_mods
-  ok <<- 1
-  #mod_env <<- environment()
-  #return(fork_mods)
+
   return(NULL)
 }
 
@@ -467,11 +533,6 @@ get_cellFieldEnv_ex <- function(x) {
   gsp  <- SpatialPoints(x$gridLC[,.(x,y,z)])
 
   csp <- SpatialPoints(matrix(c(icell_x, icell_y, 0), ncol = 3))
-
-  # qry.env  <- which(gWithinDistance(csp,
-  #                                   gsp,
-  #                                   dist = icell_size/2 + scv_dist, byid = T),
-  #                   useNames = F)
   q.c.dist <- spDists(gsp, csp)[,1]
 
   qry.env <- which(q.c.dist <= (icell_size/2 + scv_dist))
@@ -529,6 +590,8 @@ agentFBA_ex <- function(x) {
 
   # get fluxes
   flx <- sol.fba$fluxes[1:x$model@mod@react_num]
+  if(sol.fba$stat != ok)
+    flx <- rep(0, x$model@mod@react_num)
 
   # get exchange reactions with non-zero flux
   # adjusting them to time and cell mass
@@ -641,7 +704,12 @@ agentFBA_ex <- function(x) {
 
 close_clusters <- function(x){
   for(mi in names(fork_mods)) {
-    delProbCPLEX(fork_mods[[mi]]@problem@oobj@env, fork_mods[[mi]]@problem@oobj@lp)
-    closeEnvCPLEX(fork_mods[[mi]]@problem@oobj@env)
+    if(SYBIL_SETTINGS("SOLVER") == "cplexAPI") {
+      delProbCPLEX(fork_mods[[mi]]@problem@oobj@env, fork_mods[[mi]]@problem@oobj@lp)
+      closeEnvCPLEX(fork_mods[[mi]]@problem@oobj@env)
+    } else {
+      delProbGLPK(fork_mods[[mi]]@problem@oobj)
+    }
   }
+  return(NULL)
 }

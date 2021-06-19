@@ -11,13 +11,15 @@ run.simulation(
   lim_cells = 1e+05,
   lim_time = 300,
   convergence.e = 1e-04,
-  record = c("cells", "global_compounds"),
+  record = NULL,
   n.cores = NULL,
+  live.plot = F,
+  on.iteration = NULL,
   ...
 )
 }
 \arguments{
-\item{object}{An object of class \code{growthSimulation}}
+\item{object}{An object of class \link{growthSimulation}}
 
 \item{niter}{Number of rounds to simulate}
 
@@ -33,16 +35,43 @@ after this time limit (in minutes).}
 \item{convergence.e}{Numeric indicating when community growth (pg) is
 considered to have reached convergence}
 
-\item{record}{Character vector that indicated which simulation variables
-should be recorded after each simulation round. See Details.}
+\item{record}{Character vector that indicates, which simulation variables
+should be recorded after each simulation iteration. See Details.}
 
 \item{n.cores}{Number of CPUs to use for parallelisation. If NULL (default),
 it will use the number of detectable cores minus 1 and in maximum 10 cores.}
+
+\item{live.plot}{Logical. If TRUE, positions of cells are plotted at each
+iteration. Caution: May reduce performance of simulation. Default: FALSE}
+
+\item{on.iteration}{An optional function that is performed at the end of each
+iteration and returns again an object of class \link{growthSimulation}.}
+
+\item{...}{Additional arguments to `on.iteration`}
 }
 \description{
 Run the agent- and FBA-based simulation.
 }
 \details{
+Recording: The cells' positions, masses, sizes, and metabolite exchanges are
+always recorded. Also recorded are the global metabolite concentrations. Due
+to memory considerations, local metabolite concentrations are not recorded
+by default. However, users can specify which concentrations are tracked during
+the simulation using the `record` option. E.g.
+
+\code{record = c("compound_cpd00029_e0","compound_cpd00211_e0")}
+
+records the concentration fo the to two metabolites `cpd00029_e0` and
+`cpd00211_e0`. All compound concentration can be recorded with
+
+\code{record = "compounds"} ,
+
+yet, is not advised as this could be storage- and time-consuming. Compound
+concentrations are not stored in memory but on the hard drive in a file
+within the working directory. Tracked concentrations can also be plotted with
+\link{plot.environment}.
+Exoenzyme concentrations cannot be recorded in the current version.\cr
+
 Convergence is checked by calculating the ratio:
 \deqn{c := | a / min(a_{i-1},...,a_{i-5}) - 1 |}
 \eqn{a_i} is the total biomass at iteration \eqn{i}. The simulation

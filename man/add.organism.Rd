@@ -31,37 +31,52 @@ add.organism(
 
 \item{model}{The organisms metabolic model of S4-type \link[sybil]{modelorg}}
 
-\item{name}{Character for the name of the model, that will also be used for plotting.}
+\item{name}{Character for the name of the model, that will also be used for
+plotting.}
 
-\item{ncells}{integer. Number of initial cells to be added to the growth simulation.}
+\item{ncells}{integer. Number of initial cells to be added to the growth
+simulation.}
 
-\item{coords}{(optional) A two column numerical matrix specifying the coordinates (1st column x, 2nd column y) of the initial cells. If provided, the number of rows should be equal to \code{ncells}. Default: NULL}
+\item{coords}{(optional) A two column numerical matrix specifying the
+coordinates (1st column x, 2nd column y) of the initial cells. If provided,
+the number of rows should be equal to \code{ncells}. Default: NULL}
 
-\item{distribution.method}{If \code{coords} is \code{NULL}, this parameter specifies the distribution method for initial cells. Default: "random_centroid"}
+\item{distribution.method}{If `coords` is `NULL`, this parameter specifies
+the distribution method for initial cells. Default: "random_centroid"}
 
-\item{distribution.center}{Numeric vector of length 2, which specifies the coordinates of the centre for the \code{distribution.method}.}
+\item{distribution.center}{Numeric vector of length 2, which specifies the
+coordinates of the centre for the `distribution.method`.}
 
-\item{distribution.radius}{double. Spcifies the radius (in µm) in which initial cells are distributed.}
+\item{distribution.radius}{double. Spcifies the radius (in µm) in which
+initial cells are distributed.}
 
 \item{cellDiameter}{double. Diameter in µm of initial cells.}
 
 \item{cellMassInit}{double. Mass in pg of initial cells. Default is 0.28 pg}
 
-\item{cellMassAtDivision}{double. Cell mass at which a cell divides into two daughter cells. Default: 0.56 pg}
+\item{cellMassAtDivision}{double. Cell mass at which a cell divides into two
+daughter cells. Default: 0.56 pg}
 
-\item{cellShape}{character. Shape of cells. Currently only "coccus" is supported.}
+\item{cellShape}{character. Shape of cells. Currently only "coccus" is
+supported.}
 
 \item{vmax}{double. Maximum velocity of a cell in µm per minute.}
 
-\item{scavengeDist}{double. Distance in µm a cell can scavenge nutrients from its surrounding/microoenvironment.}
+\item{scavengeDist}{double. Distance in µm a cell can scavenge nutrients from
+its surrounding/microoenvironment.}
 
-\item{rm.deadends}{If TRUE, dead-end metabolites and reactions are removed from the \code{model}, which reduces the computation time for FBA, but has otherwise no effect on the flux distribution solutions.}
+\item{rm.deadends}{If TRUE, dead-end metabolites and reactions are removed
+from the `model`, which reduces the computation time for FBA, but has
+otherwise no effect on the flux distribution solutions.}
 
-\item{chemotaxisCompound}{Character vector of compound IDs, that are signals for directed movement of the organism.}
+\item{chemotaxisCompound}{Character vector of compound IDs, that are signals
+for directed movement of the organism.}
 
-\item{chemotaxisStrength}{Numeric vector that indicated the strength of chemotaxis. Positive value for attraction; Negative for repelling effect.}
+\item{chemotaxisStrength}{Numeric vector that indicated the strength of
+chemotaxis. Positive value for attraction; Negative for repelling effect.}
 
-\item{open.bounds}{Numeric value that is used to reset lower bounds of exchange reactions, which have a current lower bound of 0. See Details.}
+\item{open.bounds}{Numeric value that is used to reset lower bounds of
+exchange reactions, which have a current lower bound of 0. See Details.}
 }
 \value{
 Object of class \link{growthSimulation}.

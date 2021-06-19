@@ -19,30 +19,41 @@ plot.environment(
 )
 }
 \arguments{
-\item{object}{S4-object of type \code{growthSimulation}.}
+\item{object}{S4-object of type \link{growthSimulation}.}
 
 \item{compounds}{Character string of compound ids to plot}
 
-\item{compound.names}{Character string of compound names that should be displayed as facet header instead of compound names from the simulation object.}
+\item{compound.names}{Character string of compound names that should be
+displayed as facet header instead of compound names from the simulation object.}
 
-\item{xlim}{Numeric vector of length 2 specifying the limits (left and right) for x axis; i.e. the horizontal dimension.}
+\item{xlim}{Numeric vector of length 2 specifying the limits (left and right)
+for x axis; i.e. the horizontal dimension.}
 
-\item{ylim}{Numeric vector of length 2 specifying the limits (top and bottom) for y axis; i.e. the vertical dimension.}
+\item{ylim}{Numeric vector of length 2 specifying the limits (top and bottom)
+for y axis; i.e. the vertical dimension.}
 
-\item{iter}{Positive integer number of the simulation step/iteration to plot the distribution. Works only if the respective metabolite
-concentrations were prior recorded (see \link{run.simulation}). If \code{NULL}, current distribution of compound concentrations.}
+\item{iter}{Positive integer number of the simulation step/iteration to plot
+the distribution. Works only if the respective metabolite
+concentrations were prior recorded (see \link{run.simulation}). If `NULL`,
+current distribution of compound concentrations.}
 
-\item{scalebar.color}{Color of the scale bar and its annotation. Default: "white".}
+\item{scalebar.color}{Color of the scale bar and its annotation. Default:
+"white".}
 
-\item{layer}{Positive integer, specifying which layer (z-dimension) to plot. Default: 0 (base plane).}
+\item{layer}{Positive integer, specifying which layer (z-dimension) to plot.
+Default: 0 (base plane).}
 
-\item{gradient.limits}{Numeric vector of length 2 specifying the concentration range that is spanned by the color gradient.}
+\item{gradient.limits}{Numeric vector of length 2 specifying the
+concentration range that is spanned by the color gradient.}
 
-\item{gradient.option}{Character string indicating the colormap to be used for visualizing metabolite concentrations. Please refer to \link[ggplot2]{scale_colour_viridis_d} so see possible options.}
+\item{gradient.option}{Character string indicating the colormap to be used
+for visualizing metabolite concentrations. Please refer to \link[ggplot2]{scale_colour_viridis_d}
+so see possible options.}
 }
 \value{
 A ggplot object.
 }
 \description{
-Plots the spatial distribution of compound concentrations in a heatmap.
+Plots the spatial distribution of compound concentrations in a
+heatmap.
 }

@@ -1,7 +1,7 @@
 Package: EcoAgents
 Type: Package
 Title: Agent-based modelling of microbial communities in time and continuous µ-meter-scale space
-Version: 0.1.4
+Version: 0.1.5
 Author: Silvio Waschina
 Maintainer: Silvio Waschina <s.waschina@nutrinf.uni-kiel.de>
 Description: More about what it does (maybe more than one line)
@@ -16,17 +16,19 @@ Depends:
     ggforce (>= 0.3.2),
     particles (>= 0.2.2),
     rgeos (>= 0.5), 
-    cplexAPI (>= 1.4.0), 
+    glpkAPI (>= 1.3.2), 
     hms (>= 0.5.3), 
     parallel (>= 4.0.4),
-    lamW (>= 2.1.0)
+    lamW (>= 2.1.0),
+    stringi (>= 1.6.2)
 License: GPL-3.0
 SystemRequirements: C++11
 Encoding: UTF-8
 LazyData: true
 Suggests: 
     knitr,
-    rmarkdown
+    rmarkdown,
+    clpkAPI
 VignetteBuilder: knitr
 RoxygenNote: 7.1.1
 LinkingTo: 

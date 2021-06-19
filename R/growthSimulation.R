@@ -25,6 +25,9 @@
 #' defines the growth environment boundaries. 2-dimensional: x and y.
 #' @slot environ Object of S4-class \link{growthEnvironment}, that specifies the
 #' environment mesh layout, compounds, and their concentrations.
+#' @slot cpdRecordFile File name, in which intermediate compound concentrations
+#' are recorded if turned on in \link{run.simulation}. File is meant as internal
+#' resource and not for direct analysis outside of this package.
 setClass("growthSimulation",
 
          slots = c(
@@ -42,8 +45,10 @@ setClass("growthSimulation",
 
            # Environment slots
            universePolygon = "matrix",
-           environ         = "growthEnvironment"
+           environ         = "growthEnvironment",
 
+           # file for compound recordings
+           cpdRecordFile = "character"
          )
 )
 
@@ -53,25 +58,52 @@ setClass("growthSimulation",
 #  Initialize Simulation Object #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 
-#' @title Initialise a growth simulation.
+#' @title Initialize a growth simulation.
 #'
-#' @description Method to initialise a \code{growthSimulation} object
+#' @description Method to initialize a \link{growthSimulation} object
 #'
 #' @export
 #' @rdname growthSimulation-Initiation
-#' @param universePolygon A two column matrix specifiying the x and y coordinates of the polygon, that describes the growth environment boundaries.
-#' @param gridFieldSize double. Distance between neighboring environments 3D mesh field elements (rhombic dodecahedrons) in µm.
-#' @param gridFieldLayers integer. z-dimension (height) as the number of layers of field elements.
-#' @param deltaTime double specifying the length of each time step for the simulation in hours.
+#' @param universePolygon A two column matrix specifying the x and y
+#' coordinates of the polygon, that describes the growth environment boundaries.
+#' Alternatively, a character indicating one of the polygon presets can be
+#' provides (see details).
+#' @param gridFieldSize double. Distance between neighboring environments 3D
+#' mesh field elements (rhombic dodecahedrons) in µm.
+#' @param gridFieldLayers integer. z-dimension (height) as the number of layers
+#' of field elements.
+#' @param deltaTime double specifying the length of each time step for the
+#' simulation in hours.
 #' @param pFBAcoeff double for pFBA coefficient. Default: 1e-6
-#' @param rMotion double. Maximum x- and y distance a cell can travel by means of random motion per minute Default: 0.1 µm
+#' @param rMotion double. Maximum x- and y distance a cell can travel by means
+#' of random motion per minute Default: 0.1 µm
 #'
-#' @return Object of class \code{growthSimulation}.
+#' @return Object of class \link{growthSimulation}.
+#'
+#' @details
+#' Available universe polygon presets:\cr
+#' - "Petri_[R]" is a Petri dish-like object (actually a 99-corner polygon),
+#' where `[R]` should be replaced with an integer, indicating the radius of the
+#' dish in µm.
+#' - "rectangle_[X]_[Y]" is a, *surprise*, rectangle. [X] and [Y] should be
+#' integers specifying the width and height in µm, respectively.
+#' - "Kiel_[L]" Let microbes populate Kiel's city limits. Use [L] to specify the
+#' latitude dimension in µm (integer). The longitude is scaled automatically.
+#'
 #'
 #' @examples
-#' # Contruction a square environment of dimensions 300µm x 300µm x 5µm
+#' # Construction a square environment of dimensions 300µm x 300µm x 5µm
 #' sim <- init.simulation(cbind(c(-150, -150, 150, 150), c(-150, 150, 150, -150)),
-#'                        gridFieldSize = 1.75, gridFieldLayers = 5)
+#'                        gridFieldSize = 1, gridFieldLayers = 5)
+#' # same as:
+#' sim <- init.simulation("rectangle_150", gridFieldSize = 1,
+#'                        gridFieldLayers = 5)
+#'
+#' # Construct a Petri dish-like simulation environment (radius: 100 µm)
+#' sim <- init.simulation("Petri_100", gridFieldSize = 1,
+#'                        gridFieldLayers = 10)
+#'
+#' @importFrom stringi stri_rand_strings
 setGeneric(name="init.simulation",
            def=function(universePolygon,
                         gridFieldSize = 1,
@@ -108,6 +140,9 @@ setMethod(f          = "init.simulation",
                                  size = numeric(),
                                  parent = numeric())
 
+            recordFile <- paste0("cpdrec_",stringi::stri_rand_strings(1,6),
+                                 ".csv.gz")
+
             # init actual growth simulation object
             simobj <- new("growthSimulation",
                           n_rounds = 0,
@@ -117,13 +152,71 @@ setMethod(f          = "init.simulation",
                           history = list(),
                           cellDT = cellDT,
                           universePolygon = universePolygon,
-                          environ = environ
+                          environ = environ,
+                          cpdRecordFile = recordFile
             )
 
             # setting the solver to cplex
-            sybil::SYBIL_SETTINGS("SOLVER","cplexAPI"); ok <<- 1
+            # sybil::SYBIL_SETTINGS("SOLVER","cplexAPI"); ok <<- 1
 
             return(simobj)
+          }
+)
+
+# Polygon presets
+setMethod(f          = "init.simulation",
+          signature  = signature(universePolygon = "character"),
+          definition = function(universePolygon, ...) {
+
+            universePolygon <- universePolygon[1]
+
+            # Petri dish (99 corner polygon)
+            if(grepl("^Petri_[0-9]+$",universePolygon)) {
+              p_r <- as.numeric(sub("^Petri_(\\S+)$", "\\1", universePolygon))
+
+              if(p_r < 2.5)
+                stop("Petri dish radius too small. (min 2.5 µm)")
+
+              petri <- matrix(0, ncol = 2, nrow = 100)
+
+              petri[,1] <- sin(seq(0, 2*pi, length.out = 100))
+              petri[,2] <- cos(seq(0, 2*pi, length.out = 100))
+
+              petri <- petri * p_r
+
+              return(init.simulation(universePolygon = petri, ...))
+            }
+
+            # Square dish (99 corner polygon)
+            if(grepl("^rectangle_[0-9]+_[0-9]+$",universePolygon)) {
+              x <- as.numeric(sub("^rectangle_(\\S+)_[0-9]+$", "\\1", universePolygon)) / 2
+              y <- as.numeric(sub("^rectangle_[0-9]+_(\\S+)$", "\\1", universePolygon)) / 2
+
+              if(x < 5 | y < 5)
+                stop("Rectangle dimesions too small. (x,y >= 5 µm)")
+
+              upg <- cbind(c(x,x,-x,-x),
+                           c(y,-y,-y,y))
+
+              return(init.simulation(universePolygon = upg, ...))
+            }
+
+            # Kiel city limits (proof of principle)
+            if(grepl("^Kiel_[0-9]+$",universePolygon)) {
+              Kiel <- as.matrix(fread(system.file("extdata","kiel.csv", package = "EcoAgents")))
+              Kiel_dim <- max(Kiel[,1])
+              Kiel <- Kiel / Kiel_dim
+
+              x <- as.numeric(sub("^Kiel_(\\S+)$", "\\1", universePolygon)) / 2
+              Kiel <- Kiel * x/2
+
+              if(x < 10)
+                stop("Kiel latitude dimension too small (min 10 µm).")
+
+              return(init.simulation(universePolygon = Kiel, ...))
+            }
+
+            stop(paste0("The polygon preset \"",universePolygon,"\" does not exist / is not yet supportet."))
           }
 )
 
@@ -138,22 +231,37 @@ setMethod(f          = "init.simulation",
 #'
 #' @param object S4-object of type \link{growthSimulation}.
 #' @param model The organisms metabolic model of S4-type \link[sybil]{modelorg}
-#' @param name Character for the name of the model, that will also be used for plotting.
-#' @param ncells integer. Number of initial cells to be added to the growth simulation.
-#' @param coords (optional) A two column numerical matrix specifying the coordinates (1st column x, 2nd column y) of the initial cells. If provided, the number of rows should be equal to \code{ncells}. Default: NULL
-#' @param distribution.method If \code{coords} is \code{NULL}, this parameter specifies the distribution method for initial cells. Default: "random_centroid"
-#' @param distribution.center Numeric vector of length 2, which specifies the coordinates of the centre for the \code{distribution.method}.
-#' @param distribution.radius double. Spcifies the radius (in µm) in which initial cells are distributed.
+#' @param name Character for the name of the model, that will also be used for
+#' plotting.
+#' @param ncells integer. Number of initial cells to be added to the growth
+#' simulation.
+#' @param coords (optional) A two column numerical matrix specifying the
+#' coordinates (1st column x, 2nd column y) of the initial cells. If provided,
+#' the number of rows should be equal to \code{ncells}. Default: NULL
+#' @param distribution.method If `coords` is `NULL`, this parameter specifies
+#' the distribution method for initial cells. Default: "random_centroid"
+#' @param distribution.center Numeric vector of length 2, which specifies the
+#' coordinates of the centre for the `distribution.method`.
+#' @param distribution.radius double. Spcifies the radius (in µm) in which
+#' initial cells are distributed.
 #' @param cellDiameter double. Diameter in µm of initial cells.
 #' @param cellMassInit double. Mass in pg of initial cells. Default is 0.28 pg
-#' @param cellMassAtDivision double. Cell mass at which a cell divides into two daughter cells. Default: 0.56 pg
-#' @param cellShape character. Shape of cells. Currently only "coccus" is supported.
+#' @param cellMassAtDivision double. Cell mass at which a cell divides into two
+#' daughter cells. Default: 0.56 pg
+#' @param cellShape character. Shape of cells. Currently only "coccus" is
+#' supported.
 #' @param vmax double. Maximum velocity of a cell in µm per minute.
-#' @param scavengeDist double. Distance in µm a cell can scavenge nutrients from its surrounding/microoenvironment.
-#' @param rm.deadends If TRUE, dead-end metabolites and reactions are removed from the \code{model}, which reduces the computation time for FBA, but has otherwise no effect on the flux distribution solutions.
-#' @param chemotaxisCompound Character vector of compound IDs, that are signals for directed movement of the organism.
-#' @param chemotaxisStrength Numeric vector that indicated the strength of chemotaxis. Positive value for attraction; Negative for repelling effect.
-#' @param open.bounds Numeric value that is used to reset lower bounds of exchange reactions, which have a current lower bound of 0. See Details.
+#' @param scavengeDist double. Distance in µm a cell can scavenge nutrients from
+#' its surrounding/microoenvironment.
+#' @param rm.deadends If TRUE, dead-end metabolites and reactions are removed
+#' from the `model`, which reduces the computation time for FBA, but has
+#' otherwise no effect on the flux distribution solutions.
+#' @param chemotaxisCompound Character vector of compound IDs, that are signals
+#' for directed movement of the organism.
+#' @param chemotaxisStrength Numeric vector that indicated the strength of
+#' chemotaxis. Positive value for attraction; Negative for repelling effect.
+#' @param open.bounds Numeric value that is used to reset lower bounds of
+#' exchange reactions, which have a current lower bound of 0. See Details.
 #'
 #' @details
 #' Genome-scale metabolic models usually come pre-constraint, which means that
@@ -351,9 +459,10 @@ setMethod(f          = "add.organism",
             dt_exr <- dt_exr[grepl("^EX_", id)]
             dt_exr[, id := gsub("^EX_","",id)]
             dt_exr <- dt_exr[id != "cpd11416_c0"]
-            dt_exr[, name := gsub("-e0-e0 Exchange","",name)]
-            dt_exr[, name := gsub("-e0 Exchange","",name)]
-            dt_exr[, name := gsub(" Exchange","",name)]
+            dt_exr[, name := gsub("-e0-e0 Exchange$","",name)]
+            dt_exr[, name := gsub("-e0 Exchange$","",name)]
+            dt_exr[, name := gsub(" Exchange$","",name)]
+            dt_exr[, name := gsub(" exchange$","",name)]
 
             object <- add.compounds(object,
                                     compounds = dt_exr$id,
@@ -531,14 +640,63 @@ setMethod(f          = "add.compounds",
           }
 )
 
-
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+# Dilute compounds            #
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+#' @title Dilute compounds
+#'
+#' @description Dilutes all or selected compounds with a given dilution factor.
+#'
+#' @param object A \link{growthSimulation} object
+#' @param dilution.factor Numeric within the range of [0,1], by which the
+#' compound concentrations are diluted. `1` completely dilutes concentrations to
+#' 0 mM, while `0` does not change anything.
+#' @param compound Character of compound IDs that should be diluted. If `NULL`,
+#' all compounds are diluted.
+#' @param incl.constant Logical specifying whether also constant compounds
+#' should be diluted. Default: FALSE
+#'
+#' @export
 setGeneric(name="dilute.compounds",
            def=function(object, dilution.factor,
-                        compounds = NULL, incl.constant = F,
+                        compounds = NULL, incl.constant = FALSE,
                         ...)
            {
              standardGeneric("dilute.compounds")
            }
+)
+
+setMethod(f = "dilute.compounds",
+          signature = signature(object = "growthSimulation",
+                                dilution.factor = "numeric"),
+          definition = function(object, dilution.factor,
+                                compounds = NULL, incl.constant = FALSE) {
+
+            # sanity checks
+            if(dilution.factor > 1 | dilution.factor < 0) {
+              stop("Dilution factor should be between 0 and 1.")
+            }
+
+            if(is.null(compounds))
+              compounds <- object@environ@compounds
+
+            available_compounds <- object@environ@compounds
+            if(!incl.constant)
+              available_compounds <- object@environ@compounds[!object@environ@conc.isConstant]
+
+            compounds <- compounds[compounds %in% available_compounds]
+
+            if(length(compounds) == 0) {
+              warning("No valid compounds selected. Returning original simulation object.")
+              return(object)
+            }
+
+            ind_relcpds <- match(compounds, object@environ@compounds)
+
+            object@environ@concentrations[, ind_relcpds] <- object@environ@concentrations[, ind_relcpds] * (1-dilution.factor)
+
+            return(object)
+          }
 )
 
 
@@ -549,7 +707,7 @@ setGeneric(name="dilute.compounds",
 #'
 #' @description Uptake/Production rates in fmol summarized by organism type
 #'
-#' @param object S4-object of type \code{growthSimulation}.
+#' @param object S4-object of type \link{growthSimulation}.
 #' @param iter Positive integer number of the simulation step/iteration to plot the rates.
 #'
 #' @return A data.table.

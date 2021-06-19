@@ -130,19 +130,30 @@ setMethod(f = "plot.cells",
 
 #' @title Plot spatial distribution of compounds
 #'
-#' @description Plots the spatial distribution of compound concentrations in a heatmap.
+#' @description Plots the spatial distribution of compound concentrations in a
+#' heatmap.
 #'
-#' @param object S4-object of type \code{growthSimulation}.
+#' @param object S4-object of type \link{growthSimulation}.
 #' @param compounds Character string of compound ids to plot
-#' @param compound.names Character string of compound names that should be displayed as facet header instead of compound names from the simulation object.
-#' @param xlim Numeric vector of length 2 specifying the limits (left and right) for x axis; i.e. the horizontal dimension.
-#' @param ylim Numeric vector of length 2 specifying the limits (top and bottom) for y axis; i.e. the vertical dimension.
-#' @param iter Positive integer number of the simulation step/iteration to plot the distribution. Works only if the respective metabolite
-#' concentrations were prior recorded (see \link{run.simulation}). If \code{NULL}, current distribution of compound concentrations.
-#' @param scalebar.color Color of the scale bar and its annotation. Default: "white".
-#' @param layer Positive integer, specifying which layer (z-dimension) to plot. Default: 0 (base plane).
-#' @param gradient.limits Numeric vector of length 2 specifying the concentration range that is spanned by the color gradient.
-#' @param gradient.option Character string indicating the colormap to be used for visualizing metabolite concentrations. Please refer to \link[ggplot2]{scale_colour_viridis_d} so see possible options.
+#' @param compound.names Character string of compound names that should be
+#' displayed as facet header instead of compound names from the simulation object.
+#' @param xlim Numeric vector of length 2 specifying the limits (left and right)
+#' for x axis; i.e. the horizontal dimension.
+#' @param ylim Numeric vector of length 2 specifying the limits (top and bottom)
+#' for y axis; i.e. the vertical dimension.
+#' @param iter Positive integer number of the simulation step/iteration to plot
+#' the distribution. Works only if the respective metabolite
+#' concentrations were prior recorded (see \link{run.simulation}). If `NULL`,
+#' current distribution of compound concentrations.
+#' @param scalebar.color Color of the scale bar and its annotation. Default:
+#' "white".
+#' @param layer Positive integer, specifying which layer (z-dimension) to plot.
+#' Default: 0 (base plane).
+#' @param gradient.limits Numeric vector of length 2 specifying the
+#' concentration range that is spanned by the color gradient.
+#' @param gradient.option Character string indicating the colormap to be used
+#' for visualizing metabolite concentrations. Please refer to \link[ggplot2]{scale_colour_viridis_d}
+#' so see possible options.
 #'
 #' @return A ggplot object.
 #'
@@ -209,14 +220,44 @@ setMethod(f = "plot.environment",
               zvalOI <- zvals[layer + 1]
             }
 
-            # which time step to plot?
-            if(is.null(iter)) {
-              envDT <- data.table(object@environ@concentrations)
-            } else {
-              # TODO: When a former simulation step is selected
+            if(!(length(iter) %in% c(0,1))) {
+              iter <- iter[1]
             }
 
-            names(envDT) <- object@environ@compounds
+            if(!is.null(iter) && iter > object@n_rounds) {
+              warning(paste0("Simulation did not yet run ",iter, " iterations.",
+                             " Displaying lastest iteration status. (",
+                             object@n_rounds,")"))
+              iter <- NULL
+            }
+
+            # which time step to plot?
+            if(is.null(iter) || iter == object@n_rounds) {
+              envDT <- data.table(object@environ@concentrations)
+              names(envDT) <- object@environ@compounds
+            } else {
+              if(is.null(object@history[[iter]]$compounds))
+                stop(paste0("No compound concentrations were recorded at iteration ",
+                            iter, "."))
+
+              compounds <- compounds[compounds %in% object@history[[iter]]$compounds]
+              if(length(compounds) == 0)
+                stop(past0("None of the compounds have recorded concentrations at iteration",
+                           iter, "."))
+
+              if(!file.exists(object@cpdRecordFile))
+                stop(paste0("Compound recording file ",object@cpdRecordFile,
+                            " not found."))
+
+              i_round <- iter
+
+              envDT <- fread(object@cpdRecordFile, header = F,
+                             skip = object@history[[iter]]$compounds.range[1]-1,
+                             nrow = object@environ@nfields)
+              names(envDT) <- object@history[[iter]]$compounds
+            }
+
+
             envDT <- envDT[, ..compounds]
 
             envDT <- cbind(object@environ@field.pts@coords, envDT)

@@ -335,7 +335,7 @@ setMethod(f          = "diffuse.compounds",
 
                 exec.conc.tmp <- list(mat.in  = object@mat.in,
                                       mat.out = object@mat.out,
-                                      conc    = as.matrix(object@exoenzymes.conc[,ind_variable]),
+                                      conc    = as.matrix(object@exoenzymes.conc[,ind_variable, drop = FALSE]),
                                       n_iter  = diffusion.niter)
 
                 exec.conc.tmp <- indDiff_worker(exec.conc.tmp)

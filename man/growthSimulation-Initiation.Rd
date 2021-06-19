@@ -2,7 +2,7 @@
 % Please edit documentation in R/growthSimulation.R
 \name{init.simulation}
 \alias{init.simulation}
-\title{Initialise a growth simulation.}
+\title{Initialize a growth simulation.}
 \usage{
 init.simulation(
   universePolygon,
@@ -15,26 +15,51 @@ init.simulation(
 )
 }
 \arguments{
-\item{universePolygon}{A two column matrix specifiying the x and y coordinates of the polygon, that describes the growth environment boundaries.}
+\item{universePolygon}{A two column matrix specifying the x and y
+coordinates of the polygon, that describes the growth environment boundaries.
+Alternatively, a character indicating one of the polygon presets can be
+provides (see details).}
 
-\item{gridFieldSize}{double. Distance between neighboring environments 3D mesh field elements (rhombic dodecahedrons) in µm.}
+\item{gridFieldSize}{double. Distance between neighboring environments 3D
+mesh field elements (rhombic dodecahedrons) in µm.}
 
-\item{gridFieldLayers}{integer. z-dimension (height) as the number of layers of field elements.}
+\item{gridFieldLayers}{integer. z-dimension (height) as the number of layers
+of field elements.}
 
-\item{deltaTime}{double specifying the length of each time step for the simulation in hours.}
+\item{deltaTime}{double specifying the length of each time step for the
+simulation in hours.}
 
 \item{pFBAcoeff}{double for pFBA coefficient. Default: 1e-6}
 
-\item{rMotion}{double. Maximum x- and y distance a cell can travel by means of random motion per minute Default: 0.1 µm}
+\item{rMotion}{double. Maximum x- and y distance a cell can travel by means
+of random motion per minute Default: 0.1 µm}
 }
 \value{
-Object of class \code{growthSimulation}.
+Object of class \link{growthSimulation}.
 }
 \description{
-Method to initialise a \code{growthSimulation} object
+Method to initialize a \link{growthSimulation} object
+}
+\details{
+Available universe polygon presets:\cr
+- "Petri_[R]" is a Petri dish-like object (actually a 99-corner polygon),
+where `[R]` should be replaced with an integer, indicating the radius of the
+dish in µm.
+- "rectangle_[X]_[Y]" is a, *surprise*, rectangle. [X] and [Y] should be
+integers specifying the width and height in µm, respectively.
+- "Kiel_[L]" Let microbes populate Kiel's city limits. Use [L] to specify the
+latitude dimension in µm (integer). The longitude is scaled automatically.
 }
 \examples{
-# Contruction a square environment of dimensions 300µm x 300µm x 5µm
+# Construction a square environment of dimensions 300µm x 300µm x 5µm
 sim <- init.simulation(cbind(c(-150, -150, 150, 150), c(-150, 150, 150, -150)),
-                       gridFieldSize = 1.75, gridFieldLayers = 5)
+                       gridFieldSize = 1, gridFieldLayers = 5)
+# same as:
+sim <- init.simulation("rectangle_150", gridFieldSize = 1,
+                       gridFieldLayers = 5)
+
+# Construct a Petri dish-like simulation environment (radius: 100 µm)
+sim <- init.simulation("Petri_100", gridFieldSize = 1,
+                       gridFieldLayers = 10)
+
 }

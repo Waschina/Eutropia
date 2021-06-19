@@ -7,7 +7,7 @@
 summary.exchanges(object, iter = NULL)
 }
 \arguments{
-\item{object}{S4-object of type \code{growthSimulation}.}
+\item{object}{S4-object of type \link{growthSimulation}.}
 
 \item{iter}{Positive integer number of the simulation step/iteration to plot the rates.}
 }
