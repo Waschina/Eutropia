@@ -37,6 +37,20 @@ setClass("Exoenzyme",
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 setOldClass("growthSimulation")
 
+setGeneric(name="add.exoenzyme",
+           def=function(object,
+                        organism,
+                        id,
+                        mets,
+                        stoich,
+                        production.rate = 0.01,
+                        name = NULL, D = 10, lambda = 0.4, Kcat = 1000, Km = 25,
+                        init.conc = 0)
+           {
+             standardGeneric("add.exoenzyme")
+           }
+)
+
 #' @title Add an exoenzyme to organism and simulation
 #'
 #' @description Adds a new exoenzyme to the simulation and links it to a specific
@@ -70,20 +84,11 @@ setOldClass("growthSimulation")
 #' and Km (100 mM) were obtained from https://www.brenda-enzymes.org/enzyme.php?ecno=3.2.1.26&Suchword=&reference=&UniProtAcc=&organism%5B%5D=Zymomonas+mobilis&show_tm=0.
 #'
 #' @export
-setGeneric(name="add.exoenzyme",
-           def=function(object,
-                        organism,
-                        id,
-                        mets,
-                        stoich,
-                        production.rate = 0.01,
-                        name = NULL, D = 10, lambda = 0.4, Kcat = 1000, Km = 25,
-                        init.conc = 0)
-           {
-             standardGeneric("add.exoenzyme")
-           }
-)
-
+#'
+#' @importFrom methods new
+#'
+#' @rdname add.exoenzyme
+#' @aliases add.exoenzyme
 setMethod(f          = "add.exoenzyme",
           signature  = signature(object = "growthSimulation",
                                  organism = "character",

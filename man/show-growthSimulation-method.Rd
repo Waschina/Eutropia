@@ -7,7 +7,7 @@
 \S4method{show}{growthSimulation}(object)
 }
 \arguments{
-\item{object}{S4-object of type \code{growthSimulation}.}
+\item{object}{S4-object of type \link{growthSimulation}.}
 }
 \description{
 Displays a few numbers to describe the current status of a growth simulation.

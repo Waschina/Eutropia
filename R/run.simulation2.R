@@ -2,6 +2,18 @@
 # Run simulation       #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~#
 
+
+setGeneric(name="run.simulation",
+           def=function(object, niter, verbose = 1, lim_cells = 1e5,
+                        lim_time = 300, convergence.e = 1e-4,
+                        record = NULL, n.cores = NULL,
+                        live.plot = F, on.iteration = NULL, ...)
+           {
+             standardGeneric("run.simulation")
+           },
+           signature = c("object","niter")
+)
+
 #' @title Run simulation
 #'
 #' @description Run the agent- and FBA-based simulation.
@@ -52,18 +64,17 @@
 #' terminates if \eqn{c} is below `convergence.e`. Thus, one can expect
 #' longer simulations when reducing `convergence.e`.
 #'
+#' @import lamW
+#' @import parallel
+#' @import hms
+#' @import data.table
+#' @import tidygraph
+#' @import particles
+#' @importFrom stats weighted.mean runif rnorm sd
+#'
 #' @export
-setGeneric(name="run.simulation",
-           def=function(object, niter, verbose = 1, lim_cells = 1e5,
-                        lim_time = 300, convergence.e = 1e-4,
-                        record = NULL, n.cores = NULL,
-                        live.plot = F, on.iteration = NULL, ...)
-           {
-             standardGeneric("run.simulation")
-           },
-           signature = c("object","niter")
-)
-
+#' @rdname run.simulation
+#' @aliases run.simulation
 setMethod(f          = "run.simulation",
           signature  = signature(object    = "growthSimulation",
                                  niter     = "numeric"),
@@ -73,6 +84,9 @@ setMethod(f          = "run.simulation",
                                 n.cores = NULL,
                                 live.plot = F,
                                 on.iteration = NULL, ...) {
+
+            # devtools::check() does not recognise column names as varibales and
+            # throws warnings. This is prevented by assigned these names to NULL
 
             # initialise multi core processing (with a copy of each model in warm for each parallel fork)
             cmad <- unlist(lapply(object@models, function(x) x@cellMassAtDivision))
@@ -90,11 +104,11 @@ setMethod(f          = "run.simulation",
             # Check if cplexAPI is installed
             lpsolver <- "glpkAPI"
             okcode   <- 5
-            if("cplexAPI" %in% rownames(installed.packages())) {
+            if("cplexAPI" %in% rownames(utils::installed.packages())) {
               lpsolver <- "cplexAPI"
               okcode   <- 1
             }
-            lpsolver <- "glpkAPI"; okcode <- 5
+            # lpsolver <- "glpkAPI"; okcode <- 5 # DEBUG LINE -> force use of glpk
             if(verbose >= 1)
               cat(paste0("LP-solver: ", lpsolver, "\n"))
 
@@ -210,8 +224,8 @@ setMethod(f          = "run.simulation",
                 # Chemotaxis
                 res[["CT.x"]]       <- 0
                 res[["CT.y"]]       <- 0
-                ic_x <- object@cellDT[x,x]
-                ic_y <- object@cellDT[x,y]
+                ic_x <- object@cellDT[x,`x`]
+                ic_y <- object@cellDT[x,`y`]
                 for(icpd in object@models[[object@cellDT[x, type]]]@chemotaxisCompound) {
                   ind_ct <- which(object@models[[object@cellDT[x, type]]]@chemotaxisCompound == icpd)
                   ind <- which(res[["field.cpds"]] == icpd)
@@ -353,12 +367,12 @@ setMethod(f          = "run.simulation",
                 rm(newCells)
 
                 # place daughter cell next to parent cell (random angle/direction)
-                object@cellDT[cell > ncells, x := x + size * cos(runif(.N, max = 2*pi))]
-                object@cellDT[cell > ncells, y := y + size * sin(runif(.N, max = 2*pi))]
+                object@cellDT[`cell` > ncells, x := x + size * cos(stats::runif(.N, max = 2*pi))]
+                object@cellDT[`cell` > ncells, y := y + size * sin(stats::runif(.N, max = 2*pi))]
 
                 # invert velocity of daughter cells
-                object@cellDT[cell > ncells, x.vel := x.vel * (-1)]
-                object@cellDT[cell > ncells, y.vel := y.vel * (-1)]
+                object@cellDT[`cell` > ncells, x.vel := x.vel * (-1)]
+                object@cellDT[`cell` > ncells, y.vel := y.vel * (-1)]
               }
 
               object@cellDT[, cellMassAtDivision := NULL]
@@ -368,7 +382,7 @@ setMethod(f          = "run.simulation",
               cvmax <- unlist(lapply(object@models, function(x) x@vmax)) * 3600 * object@deltaTime # max speed in µm per deltaTime
 
               # Brownian motion of cells (assuming normal distribution)
-              r_motion <- matrix(rnorm(ncells_new * 2,sd = object@rMotion * 60 * object@deltaTime),
+              r_motion <- matrix(stats::rnorm(ncells_new * 2,sd = object@rMotion * 60 * object@deltaTime),
                                  ncol = 2)
 
               # set up particle simulation
@@ -501,7 +515,8 @@ setMethod(f          = "run.simulation",
 #
 #
 #
-#
+#' @import sybil
+#'
 init_warm_mods <- function(x, lpsolver, okcode) {
   require(EcoAgents)
 
@@ -519,11 +534,8 @@ init_warm_mods <- function(x, lpsolver, okcode) {
   return(NULL)
 }
 
-#
-#
-#
-#
-#
+#' @import sp
+#' @import data.table
 get_cellFieldEnv_ex <- function(x) {
   icell_x    <- x$x
   icell_y    <- x$y
@@ -549,12 +561,12 @@ get_cellFieldEnv_ex <- function(x) {
                     acc.prop   = accPortion))
 }
 
-#
-#
-#
-#
-#
+
+
+#' @import sybil
+#' @import data.table
 agentFBA_ex <- function(x) {
+
   # (2.0) Get local accessible compounds
   accCompounds <- scavenge.compounds(localEnv     = x[c("acc.prop","field.id","field.dist")],
                                      env_conc     = x$field.conc,
@@ -702,13 +714,16 @@ agentFBA_ex <- function(x) {
   ))
 }
 
+#' @import sybil
 close_clusters <- function(x){
   for(mi in names(fork_mods)) {
     if(SYBIL_SETTINGS("SOLVER") == "cplexAPI") {
-      delProbCPLEX(fork_mods[[mi]]@problem@oobj@env, fork_mods[[mi]]@problem@oobj@lp)
-      closeEnvCPLEX(fork_mods[[mi]]@problem@oobj@env)
+      require(cplexAPI)
+      cplexAPI::delProbCPLEX(fork_mods[[mi]]@problem@oobj@env, fork_mods[[mi]]@problem@oobj@lp)
+      cplexAPI::closeEnvCPLEX(fork_mods[[mi]]@problem@oobj@env)
     } else {
-      delProbGLPK(fork_mods[[mi]]@problem@oobj)
+      require(glpkAPI)
+      glpkAPI::delProbGLPK(fork_mods[[mi]]@problem@oobj)
     }
   }
   return(NULL)

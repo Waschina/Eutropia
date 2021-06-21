@@ -62,6 +62,9 @@ setClass("growthEnvironment",
 # @param field.size Is the diameter of the circumscribed sphere. Its relation to a is: z = 4*a/sqrt(3)
 # @param expand Length of field grid exceeding the \code{polygon.cords}. Should be higher than 2x\code{field.size}. Really?
 #
+#' @import rgeos
+#' @import sp
+#' @import data.table
 setMethod("initialize", "growthEnvironment",
           function(.Object,
                    polygon.coords, field.size, field.layers = 3, expand = field.size, ...) {

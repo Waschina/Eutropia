@@ -6,7 +6,7 @@
 \alias{growthSimulation}
 \title{Structure of the S4 class "growthSimulation"}
 \description{
-Structure of the S4 class \code{growthSimulation} as framework
+Structure of the S4 class \link{growthSimulation} as framework
 for the growth environment and container for agent-based flux balance
 analysis.
 }
@@ -14,7 +14,7 @@ analysis.
 
 \describe{
 \item{\code{n_rounds}}{integer for the number of simulation rounds that were already
-performed for this \code{growthSimulation} object.}
+performed for this \link{growthSimulation} object.}
 
 \item{\code{deltaTime}}{double for length of each time step for the simulation in
 hours.}

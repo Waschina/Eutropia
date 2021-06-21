@@ -23,7 +23,7 @@ shapes are supported.}
 
 \item{\code{vmax}}{Numeric for the maximum speed a cell can move in µm/s}
 
-\item{\code{scavangeDist}}{Numeric indicating the maximum distance (from cell surface)
+\item{\code{scavengeDist}}{Numeric indicating the maximum distance (from cell surface)
 a cell can scavenge nutrients from its surrounding. Unit: µm}
 
 \item{\code{chemotaxisCompound}}{Character vector with the compound IDs that influence

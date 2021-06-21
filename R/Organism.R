@@ -12,7 +12,7 @@
 #' @slot cellShape Character for the cell shape type. Currently, only coccus/sphere
 #' shapes are supported.
 #' @slot vmax Numeric for the maximum speed a cell can move in µm/s
-#' @slot scavangeDist Numeric indicating the maximum distance (from cell surface)
+#' @slot scavengeDist Numeric indicating the maximum distance (from cell surface)
 #' a cell can scavenge nutrients from its surrounding. Unit: µm
 #' @slot chemotaxisCompound Character vector with the compound IDs that influence
 #' the cells chemotaxis behavior.
@@ -45,6 +45,8 @@ setClass("Organism",
          )
 )
 
+#' @import data.table
+#' @import sybil
 setMethod("initialize", "Organism",
           function(.Object,
                    cellDiameter,

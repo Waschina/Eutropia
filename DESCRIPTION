@@ -4,31 +4,24 @@ Title: Agent-based modelling of microbial communities in time and continuous µ-
 Version: 0.1.5
 Author: Silvio Waschina
 Maintainer: Silvio Waschina <s.waschina@nutrinf.uni-kiel.de>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-    `sudo apt install libgeos-dev`
+Description: Cell agent-based modelling with FBA metabolic flux predictions 
+    for each agent. The packages allows the handling of complex polygons (also non-
+    convex) as growth envrionment, exoenzymes, nutrient regimes, and chemotaxis.
 Depends: 
-    R (>= 4.0.1),
+    R (>= 4.0.0),
     data.table (>= 1.13.4),
-    tidygraph (>= 1.2.0),
     sybil (>= 2.1.5),
-    ggplot2 (>= 3.3.2),
-    ggforce (>= 0.3.2),
     particles (>= 0.2.2),
     rgeos (>= 0.5), 
-    glpkAPI (>= 1.3.2), 
-    hms (>= 0.5.3), 
-    parallel (>= 4.0.4),
-    lamW (>= 2.1.0),
-    stringi (>= 1.6.2)
-License: GPL-3.0
+    hms (>= 0.5.3) 
+License: file LICENSE
 SystemRequirements: C++11
 Encoding: UTF-8
 LazyData: true
 Suggests: 
     knitr,
     rmarkdown,
-    clpkAPI
+    cplexAPI
 VignetteBuilder: knitr
 RoxygenNote: 7.1.1
 LinkingTo: 
@@ -36,5 +29,15 @@ LinkingTo:
     RcppArmadillo
 Imports: 
     Rcpp,
-    RcppArmadillo
+    RcppArmadillo,
+    ggplot2,
+    ggforce,
+    parallel,
+    lamW,
+    stringi,
+    Matrix,
+    methods,
+    glpkAPI,
+    sp,
+    tidygraph
 NeedsCompilation: yes

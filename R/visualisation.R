@@ -1,6 +1,13 @@
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 # Plot cell distribution  #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+setGeneric(name="plot.cells",
+           def=function(object, xlim = NULL, ylim = NULL, iter = NULL,
+                        scalebar.color = "white", ...)
+           {
+             standardGeneric("plot.cells")
+           }
+)
 
 #' @title Plot spatial distribution of cells
 #'
@@ -14,15 +21,14 @@
 #'
 #' @return A ggplot object.
 #'
-#' @export
-setGeneric(name="plot.cells",
-           def=function(object, xlim = NULL, ylim = NULL, iter = NULL,
-                        scalebar.color = "white", ...)
-           {
-             standardGeneric("plot.cells")
-           }
-)
-
+#' @import ggforce
+#' @import ggplot2
+#' @import hms
+#'
+#' @rdname plot.cells
+#' @aliases plot.cells
+#'
+#' @exportMethod plot.cells
 setMethod(f = "plot.cells",
           signature = signature(object = "growthSimulation"),
           definition = function(object, xlim = NULL, ylim = NULL, iter = NULL,
@@ -77,12 +83,19 @@ setMethod(f = "plot.cells",
               col_code <- "Set3"
 
             p <- ggplot(cellposDT, aes(x0 = x,y0 = y)) +
-              geom_polygon(data = kidt, mapping = aes(x = x, y = y), col = "#333333", fill = "black", linetype = "solid") +
-              geom_circle(aes(r = size/2, fill = type, col = type), alpha = 0.3, show.legend = T, key_glyph = draw_key_point) +
+              geom_polygon(data = kidt, mapping = aes(x = x, y = y),
+                           col = "#333333", fill = "black", linetype = "solid") +
+              geom_circle(aes(r = size/2, fill = type, col = type), alpha = 0.3,
+                          show.legend = T, key_glyph = draw_key_point) +
               coord_equal(xlim = xlim, ylim = ylim) +
-              geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
-                               y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = scalebar.color) +
-              annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
+              geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac,
+                               xend = xlim[2]-x_exp_fac,
+                               y = ylim[1]+y_exp_fac,
+                               yend = ylim[1]+y_exp_fac), color = scalebar.color) +
+              annotate("text",
+                       x = xlim[2]-bar_wd/2-x_exp_fac,
+                       y = ylim[1]+y_exp_fac,
+                       label = paste0(bar_wd," \u00B5m"),
                        color = scalebar.color, hjust = 0.5, vjust = -1, size = 2.5)
 
             # use nicer brewer colors if here are not to many distinct cell types
@@ -127,6 +140,15 @@ setMethod(f = "plot.cells",
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 # Plot compound distribution  #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+setGeneric(name="plot.environment",
+           def=function(object, compounds, compound.names = NULL,
+                        xlim = NULL, ylim = NULL, iter = NULL,
+                        scalebar.color = "white", layer = 0,
+                        gradient.limits = NULL, gradient.option = "viridis", ...)
+           {
+             standardGeneric("plot.environment")
+           }
+)
 
 #' @title Plot spatial distribution of compounds
 #'
@@ -155,19 +177,16 @@ setMethod(f = "plot.cells",
 #' for visualizing metabolite concentrations. Please refer to \link[ggplot2]{scale_colour_viridis_d}
 #' so see possible options.
 #'
-#' @return A ggplot object.
+#' @return A \link{ggplot}
 #'
-#' @export
-setGeneric(name="plot.environment",
-           def=function(object, compounds, compound.names = NULL,
-                        xlim = NULL, ylim = NULL, iter = NULL,
-                        scalebar.color = "white", layer = 0,
-                        gradient.limits = NULL, gradient.option = "viridis", ...)
-           {
-             standardGeneric("plot.environment")
-           }
-)
+#' @import ggplot2
+#' @import hms
+#'
 
+#' @rdname plot.environment
+#' @aliases plot.environment
+#'
+#' @exportMethod plot.environment
 setMethod(f = "plot.environment",
           signature = signature(object = "growthSimulation",
                                 compounds = "character"),
@@ -253,7 +272,7 @@ setMethod(f = "plot.environment",
 
               envDT <- fread(object@cpdRecordFile, header = F,
                              skip = object@history[[iter]]$compounds.range[1]-1,
-                             nrow = object@environ@nfields)
+                             nrows = object@environ@nfields)
               names(envDT) <- object@history[[iter]]$compounds
             }
 
@@ -282,7 +301,10 @@ setMethod(f = "plot.environment",
               coord_equal(xlim = xlim, ylim = ylim) +
               geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
                                y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = scalebar.color) +
-              annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
+              annotate("text",
+                       x = xlim[2]-bar_wd/2-x_exp_fac,
+                       y = ylim[1]+y_exp_fac,
+                       label = paste0(bar_wd," \u00B5m"),
                        color = scalebar.color, hjust = 0.5, vjust = -1, size = 2.5) +
               theme_bw() +
               scale_fill_viridis_c(guide = guide_colourbar(direction = "vertical"), limits = gradient.limits,
@@ -314,6 +336,15 @@ setMethod(f = "plot.environment",
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 # Plot exoenzyme distribution #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+setGeneric(name="plot.environment.exoenzymes",
+           def=function(object, exoenzymes, exoenzyme.names = NULL,
+                        xlim = NULL, ylim = NULL, iter = NULL,
+                        scalebar.color = "white", layer = 0,
+                        gradient.limits = NULL, gradient.option = "viridis", ...)
+           {
+             standardGeneric("plot.environment.exoenzymes")
+           }
+)
 
 #' @title Plot spatial distribution of exoenzymes
 #'
@@ -343,19 +374,14 @@ setMethod(f = "plot.environment",
 #' for visualizing exoenzyme concentrations. Please refer to \link[ggplot2]{scale_colour_viridis_d}
 #' so see possible options.
 #'
-#' @return A ggplot object.
+#' @return A \link{ggplot}
 #'
-#' @export
-setGeneric(name="plot.environment.exoenzymes",
-           def=function(object, exoenzymes, exoenzyme.names = NULL,
-                        xlim = NULL, ylim = NULL, iter = NULL,
-                        scalebar.color = "white", layer = 0,
-                        gradient.limits = NULL, gradient.option = "viridis", ...)
-           {
-             standardGeneric("plot.environment.exoenzymes")
-           }
-)
-
+#' @import ggplot2
+#'
+#' @rdname plot.environment.exoenzymes
+#' @aliases plot.environment.exoenzymes
+#'
+#' @exportMethod plot.environment.exoenzymes
 setMethod(f = "plot.environment.exoenzymes",
           signature = signature(object = "growthSimulation",
                                 exoenzymes = "character"),
@@ -440,9 +466,14 @@ setMethod(f = "plot.environment.exoenzymes",
               #geom_hex(aes(colour = mM), stat = "identity") +
               geom_bin2d(aes(colour = nM), stat = "identity") +
               coord_equal(xlim = xlim, ylim = ylim) +
-              geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac, xend = xlim[2]-x_exp_fac,
-                               y = ylim[1]+y_exp_fac, yend = ylim[1]+y_exp_fac), color = scalebar.color) +
-              annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac, y = ylim[1]+y_exp_fac, label = paste0(bar_wd," µm"),
+              geom_segment(aes(x = xlim[2]-bar_wd-x_exp_fac,
+                               xend = xlim[2]-x_exp_fac,
+                               y = ylim[1]+y_exp_fac,
+                               yend = ylim[1]+y_exp_fac),
+                           color = scalebar.color) +
+              annotate("text", x = xlim[2]-bar_wd/2-x_exp_fac,
+                       y = ylim[1]+y_exp_fac,
+                       label = paste0(bar_wd," \u00B5m"),
                        color = scalebar.color, hjust = 0.5, vjust = -1, size = 2.5) +
               theme_bw() +
               scale_fill_viridis_c(guide = guide_colourbar(direction = "vertical"), limits = gradient.limits,
@@ -469,18 +500,6 @@ setMethod(f = "plot.environment.exoenzymes",
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 # Plot growth curves      #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
-
-#' @title Plot growth curves
-#'
-#' @description Plot population growth over time
-#'
-#' @param object S4-object of type \code{growthSimulation}.
-#' @param tlim Numeric vector of length 2, specifying the x-range (Time) to be displayed.
-#' @param ylim Numeric vector of length 2, specifying the y-range (Mass) to be displayed.
-#'
-#' @return A ggplot object.
-#'
-#' @export
 setGeneric(name="plot.growth",
            def=function(object, tlim = NULL, ylim = NULL, ...)
            {
@@ -488,7 +507,22 @@ setGeneric(name="plot.growth",
            }
 )
 
-
+#' @title Plot growth curves
+#'
+#' @description Plot population growth over time
+#'
+#' @param object S4-object of class \link{growthSimulation}.
+#' @param tlim Numeric vector of length 2, specifying the x-range (Time) to be displayed.
+#' @param ylim Numeric vector of length 2, specifying the y-range (Mass) to be displayed.
+#'
+#' @return A \link{ggplot}
+#'
+#' @import ggplot2
+#'
+#' @rdname plot.growth
+#' @aliases plot.growth
+#'
+#' @exportMethod plot.growth
 setMethod(f = "plot.growth",
           signature = signature(object = "growthSimulation"),
           definition = function(object, tlim = NULL, ylim = NULL) {
@@ -525,20 +559,6 @@ setMethod(f = "plot.growth",
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 # Plot compound time curves #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
-
-#' @title Plot compound time curves
-#'
-#' @description Plot concentrations of metabolites over time
-#'
-#' @param object S4-object of type \code{growthSimulation}.
-#' @param compounds Vector of compound IDs whose concentration is plotted. If no IDs are provided,
-#' the top variable (SD) compounds are plotted (max. 8 compounds).
-#' @param tlim Numeric vector of length 2, specifying the x-range (Time) to be displayed.
-#' @param ylim Numeric vector of length 2, specifying the y-range (mM) to be displayed.
-#'
-#' @return A ggplot object.
-#'
-#' @export
 setGeneric(name="plot.compounds",
            def=function(object, compounds = NULL, tlim = NULL, ylim = NULL, ...)
            {
@@ -546,7 +566,24 @@ setGeneric(name="plot.compounds",
            }
 )
 
-
+#' @title Plot compound time curves
+#'
+#' @description Plot concentrations of metabolites over time
+#'
+#' @param object S4-object of class \link{growthSimulation}.
+#' @param compounds Vector of compound IDs whose concentration is plotted. If no IDs are provided,
+#' the top variable (SD) compounds are plotted (max. 8 compounds).
+#' @param tlim Numeric vector of length 2, specifying the x-range (Time) to be displayed.
+#' @param ylim Numeric vector of length 2, specifying the y-range (mM) to be displayed.
+#'
+#' @return A \link{ggplot}.
+#'
+#' @import ggplot2
+#'
+#' @rdname plot.compounds
+#' @aliases plot.compounds
+#'
+#' @exportMethod plot.compounds
 setMethod(f = "plot.compounds",
           signature = signature(object = "growthSimulation"),
           definition = function(object, compounds = NULL, tlim = NULL, ylim = NULL) {
