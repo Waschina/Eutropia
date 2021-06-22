@@ -70,6 +70,9 @@ setMethod("initialize", "growthEnvironment",
                    polygon.coords, field.size, field.layers = 3, expand = field.size, ...) {
             .Object <- callNextMethod(.Object, ...)
 
+            # Set seed so grid mesh sampling is reproducible
+            set.seed(24118)
+
             field.layers <- as.integer(field.layers)
             # Important: Distance of field centers of neighboring fields: 2*H = 1*R_i = 2 * a * sqrt(2/3)
             # equal double the distance from center to plane faces
@@ -88,6 +91,9 @@ setMethod("initialize", "growthEnvironment",
             field.pts_base <- as.matrix(field.pts_base@coords)
             field.pts_base <- cbind(field.pts_base, matrix(0, ncol = 1, nrow = nrow(field.pts_base)))
             colnames(field.pts_base) <- c("x","y","z")
+
+            # reset random seed
+            rm(.Random.seed, envir=globalenv())
 
             # Make additional layers
             #fieldHeight    <- sqrt(6)/3 * field.size  # z-axis difference between field centers of neighboring layers
@@ -270,89 +276,73 @@ setMethod(f          = "build.DCM",
 # Compound diffusion   #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~#
 #' @import parallel
-setOldClass("SOCKcluster")
+diffuse_compounds <- function(object, deltaTime, cl, n.cores) {
 
-setGeneric(name="diffuse.compounds",
-           def=function(object, deltaTime, cl, n.cores, ...)
-           {
-             standardGeneric("diffuse.compounds")
-           }
-)
+  # - - - - - #
+  # Compounds #
+  # - - - - - #
+  n.chunks <- n.cores
+  ind_variable <- which(apply(object@concentrations,2,sd) > 0 & object@compound.D > 0)
 
+  if(length(ind_variable) / n.chunks < 3)
+    n.chunks <- ceiling(n.chunks/2)
 
-setMethod(f          = "diffuse.compounds",
-          signature  = signature(object         = "growthEnvironment",
-                                 deltaTime      = "numeric",
-                                 cl             = "SOCKcluster",
-                                 n.cores        = "numeric"),
-          definition = function(object, deltaTime, cl, n.cores) {
+  ind_var_chunks <- split(ind_variable,
+                          cut(seq_along(ind_variable),
+                              n.chunks, labels = F))
 
-            # - - - - - #
-            # Compounds #
-            # - - - - - #
-            n.chunks <- n.cores
-            ind_variable <- which(apply(object@concentrations,2,sd) > 0 & object@compound.D > 0)
+  # no variable compounds -> no need for diffusion
+  if(length(ind_variable) > 0) {
+    # VIA RccpArmadillo
+    conc.list.tmp <- lapply(ind_var_chunks, function(x) {
 
-            if(length(ind_variable) / n.chunks < 3)
-              n.chunks <- ceiling(n.chunks/2)
+      diff_shere_surface_area <- object@compound.D[x] * 60 * 60 * deltaTime # surface area in µm^2 after one iteration step
+      diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
+      diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
 
-            ind_var_chunks <- split(ind_variable,
-                                    cut(seq_along(ind_variable),
-                                        n.chunks, labels = F))
+      list(mat.in  = object@mat.in,
+           mat.out = object@mat.out,
+           conc    = as.matrix(object@concentrations[,x]),
+           n_iter  = diffusion.niter)
+    })
+    #print(ind_var_chunks[[1]])
+    conc.list.tmp <- parLapply(cl, conc.list.tmp, indDiff_worker)
 
-            # no variable compounds -> no need for diffusion
-            if(length(ind_variable) > 0) {
-              # VIA RccpArmadillo
-              conc.list.tmp <- lapply(ind_var_chunks, function(x) {
+    for(k in 1:length(ind_var_chunks)) {
+      for(i in 1:ncol(conc.list.tmp[[k]])) {
+        object@concentrations[,ind_var_chunks[[k]][i]] <- conc.list.tmp[[k]][,i]
+      }
+    }
+  }
 
-                diff_shere_surface_area <- object@compound.D[x] * 60 * 60 * deltaTime # surface area in µm^2 after one iteration step
-                diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
-                diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
+  # - - - - - - #
+  # Exoenzymes  #
+  # - - - - - - #
+  if(length(object@exoenzymes) > 0) {
+    exec.D <- unlist(lapply(object@exoenzymes, function(x) x@D))
+    ind_variable <- which(apply(object@exoenzymes.conc,2,sd) > 0 & exec.D > 0)
 
-                list(mat.in  = object@mat.in,
-                     mat.out = object@mat.out,
-                     conc    = as.matrix(object@concentrations[,x]),
-                     n_iter  = diffusion.niter)
-              })
-              #print(ind_var_chunks[[1]])
-              conc.list.tmp <- parLapply(cl, conc.list.tmp, indDiff_worker)
+    if(length(ind_variable) > 0) {
+      diff_shere_surface_area <- exec.D[ind_variable] * 60 * 60 * deltaTime # surface area in µm^2 after one iteration step
+      diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
+      diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
 
-              for(k in 1:length(ind_var_chunks)) {
-                for(i in 1:ncol(conc.list.tmp[[k]])) {
-                  object@concentrations[,ind_var_chunks[[k]][i]] <- conc.list.tmp[[k]][,i]
-                }
-              }
-            }
+      exec.conc.tmp <- list(mat.in  = object@mat.in,
+                            mat.out = object@mat.out,
+                            conc    = as.matrix(object@exoenzymes.conc[,ind_variable, drop = FALSE]),
+                            n_iter  = diffusion.niter)
 
-            # - - - - - - #
-            # Exoenzymes  #
-            # - - - - - - #
-            if(length(object@exoenzymes) > 0) {
-              exec.D <- unlist(lapply(object@exoenzymes, function(x) x@D))
-              ind_variable <- which(apply(object@exoenzymes.conc,2,sd) > 0 & exec.D > 0)
+      exec.conc.tmp <- indDiff_worker(exec.conc.tmp)
 
-              if(length(ind_variable) > 0) {
-                diff_shere_surface_area <- exec.D[ind_variable] * 60 * 60 * deltaTime # surface area in µm^2 after one iteration step
-                diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
-                diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
+      for(i in 1:length(ind_variable)) {
+        object@exoenzymes.conc[,ind_variable[i]] <- exec.conc.tmp[,i]
+      }
 
-                exec.conc.tmp <- list(mat.in  = object@mat.in,
-                                      mat.out = object@mat.out,
-                                      conc    = as.matrix(object@exoenzymes.conc[,ind_variable, drop = FALSE]),
-                                      n_iter  = diffusion.niter)
+    }
+  }
 
-                exec.conc.tmp <- indDiff_worker(exec.conc.tmp)
-
-                for(i in 1:length(ind_variable)) {
-                  object@exoenzymes.conc[,ind_variable[i]] <- exec.conc.tmp[,i]
-                }
-
-              }
-            }
-
-            return(object)
-          }
-)
+  return(object)
+}
 
 indDiff_worker <- function(x) {
   #res <- diffChangeVec(x$mat.in, x$mat.out, x$conc, x$n_iter)

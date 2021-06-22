@@ -25,9 +25,10 @@
 #' defines the growth environment boundaries. 2-dimensional: x and y.
 #' @slot environ Object of S4-class \link{growthEnvironment}, that specifies the
 #' environment mesh layout, compounds, and their concentrations.
-#' @slot cpdRecordFile File name, in which intermediate compound concentrations
-#' are recorded if turned on in \link{run.simulation}. File is meant as internal
-#' resource and not for direct analysis outside of this package.
+#' @slot recordDir Directory name, in which intermediate compound concentrations
+#' are recorded if turned on in \link{run_simulation}. Files in this directory
+#' are meant as internal resource and not for direct analysis outside of this
+#' package.
 setClass("growthSimulation",
 
          slots = c(
@@ -48,26 +49,21 @@ setClass("growthSimulation",
            environ         = "growthEnvironment",
 
            # file for compound recordings
-           cpdRecordFile = "character"
+           recordDir = "character"
          )
 )
+
+# small helper for sanity checks
+is.growthSimulation <- function(x) inherits(x, "growthSimulation")
 
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 #  Initialize Simulation Object #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
-setGeneric(name="init.simulation",
-           def=function(universePolygon, ...)
-           {
-             standardGeneric("init.simulation")
-           }
-)
 
-#' @title Initialize a growth simulation.
+#' Initialize a growth simulation.
 #'
-#' @description Method to initialize a \link{growthSimulation} object
+#' Method to initialize a \link{growthSimulation} object
 #'
-#' @export
-#' @rdname growthSimulation-Initiation
 #' @param universePolygon A two column matrix specifying the x and y
 #' coordinates of the polygon, that describes the growth environment boundaries.
 #' Alternatively, a character indicating one of the polygon presets can be
@@ -98,161 +94,123 @@ setGeneric(name="init.simulation",
 #'
 #' @examples
 #' # Construction a square environment of dimensions 100µm x 100µm x 5µm
-#' sim <- init.simulation(cbind(c(-50, -50, 50, 50),
+#' sim <- init_simulation(cbind(c(-50, -50, 50, 50),
 #'                              c(-60, 60, 60, -60)),
 #'                        gridFieldSize = 1, gridFieldLayers = 3)
-#' sim <- init.simulation("rectangle_100_120", gridFieldSize = 1,
+#' sim <- init_simulation("rectangle_100_120", gridFieldSize = 1,
 #'                        gridFieldLayers = 5)
 #'
 #' # Construct a Petri dish-like simulation environment (radius: 100 µm)
-#' sim <- init.simulation("Petri_100", gridFieldSize = 1,
+#' sim <- init_simulation("Petri_100", gridFieldSize = 1,
 #'                        gridFieldLayers = 10)
 #'
-#' @importFrom stringi stri_rand_strings
 #' @import data.table
 #' @importFrom methods new
 #'
-#' @aliases init.simulation
-setMethod(f          = "init.simulation",
-          signature  = signature(universePolygon = "matrix"),
-          definition = function(universePolygon,
-                                gridFieldSize   = 1,
-                                gridFieldLayers = 3,
-                                deltaTime       = 1/6,
-                                rMotion         = 0.1) {
+#' @export
+init_simulation <- function(universePolygon,
+                            gridFieldSize   = 1,
+                            gridFieldLayers = 3,
+                            deltaTime       = 1/6,
+                            rMotion         = 0.1) {
+
+  # generate poygon matrix if preset is chosen
+  if(is.character(universePolygon))
+    universePolygon <- universe_polygon_preset(universePolygon)
 
 
-            # init growth environment
-            environ <- new("growthEnvironment",
-                           polygon.coords  = universePolygon,
-                           field.size      = gridFieldSize,
-                           field.layers    = gridFieldLayers)
+  # init growth environment
+  environ <- new("growthEnvironment",
+                 polygon.coords  = universePolygon,
+                 field.size      = gridFieldSize,
+                 field.layers    = gridFieldLayers)
 
-            # construct empty cell info table
-            cellDT <- data.table(cell = numeric(),
-                                 type = character(),
-                                 x = numeric(), y = numeric(),
-                                 x.vel = numeric(), y.vel = numeric(),
-                                 mass = numeric(),
-                                 size = numeric(),
-                                 parent = numeric())
+  # construct empty cell info table
+  cellDT <- data.table(cell = numeric(),
+                       type = character(),
+                       x = numeric(), y = numeric(),
+                       x.vel = numeric(), y.vel = numeric(),
+                       mass = numeric(),
+                       size = numeric(),
+                       parent = numeric())
 
-            recordFile <- paste0("cpdrec_",stringi::stri_rand_strings(1,6),
-                                 ".csv.gz")
+  # init actual growth simulation object
+  simobj <- new("growthSimulation",
+                n_rounds = 0,
+                deltaTime = deltaTime,
+                rMotion = rMotion,
+                models = list(),
+                history = list(),
+                cellDT = cellDT,
+                universePolygon = universePolygon,
+                environ = environ,
+                recordDir = NA_character_
+  )
 
-            # init actual growth simulation object
-            simobj <- new("growthSimulation",
-                          n_rounds = 0,
-                          deltaTime = deltaTime,
-                          rMotion = rMotion,
-                          models = list(),
-                          history = list(),
-                          cellDT = cellDT,
-                          universePolygon = universePolygon,
-                          environ = environ,
-                          cpdRecordFile = recordFile
-            )
+  return(simobj)
+}
 
-            return(simobj)
-          }
-)
+universe_polygon_preset <- function(universePolygon) {
 
-# Polygon presets
-#' @param ... Same optional parameters as \link{init.simulation} with signature
-#' 'matrix'.
-#'
-#' @import data.table
-#' @rdname growthSimulation-Initiation
-#' @aliases init.simulation
-setMethod(f          = "init.simulation",
-          signature  = signature(universePolygon = "character"),
-          definition = function(universePolygon, ...) {
+  universePolygon <- universePolygon[1]
 
-            universePolygon <- universePolygon[1]
+  # Petri dish (99 corner polygon)
+  if(grepl("^Petri_[0-9]+$",universePolygon)) {
+    p_r <- as.numeric(sub("^Petri_(\\S+)$", "\\1", universePolygon))
 
-            # Petri dish (99 corner polygon)
-            if(grepl("^Petri_[0-9]+$",universePolygon)) {
-              p_r <- as.numeric(sub("^Petri_(\\S+)$", "\\1", universePolygon))
+    if(p_r < 2.5)
+      stop("Petri dish radius too small. (min 2.5 µm)")
 
-              if(p_r < 2.5)
-                stop("Petri dish radius too small. (min 2.5 µm)")
+    petri <- matrix(0, ncol = 2, nrow = 100)
 
-              petri <- matrix(0, ncol = 2, nrow = 100)
+    petri[,1] <- sin(seq(0, 2*pi, length.out = 100))
+    petri[,2] <- cos(seq(0, 2*pi, length.out = 100))
 
-              petri[,1] <- sin(seq(0, 2*pi, length.out = 100))
-              petri[,2] <- cos(seq(0, 2*pi, length.out = 100))
+    petri <- petri * p_r
 
-              petri <- petri * p_r
+    return(petri)
+  }
 
-              return(init.simulation(universePolygon = petri, ...))
-            }
+  # Square dish (99 corner polygon)
+  if(grepl("^rectangle_[0-9]+_[0-9]+$",universePolygon)) {
+    x <- as.numeric(sub("^rectangle_(\\S+)_[0-9]+$", "\\1", universePolygon)) / 2
+    y <- as.numeric(sub("^rectangle_[0-9]+_(\\S+)$", "\\1", universePolygon)) / 2
 
-            # Square dish (99 corner polygon)
-            if(grepl("^rectangle_[0-9]+_[0-9]+$",universePolygon)) {
-              x <- as.numeric(sub("^rectangle_(\\S+)_[0-9]+$", "\\1", universePolygon)) / 2
-              y <- as.numeric(sub("^rectangle_[0-9]+_(\\S+)$", "\\1", universePolygon)) / 2
+    if(x < 5 | y < 5)
+      stop("Rectangle dimesions too small. (x,y >= 5 µm)")
 
-              if(x < 5 | y < 5)
-                stop("Rectangle dimesions too small. (x,y >= 5 µm)")
+    upg <- cbind(c(x,x,-x,-x),
+                 c(y,-y,-y,y))
 
-              upg <- cbind(c(x,x,-x,-x),
-                           c(y,-y,-y,y))
+    return(upg)
+  }
 
-              return(init.simulation(universePolygon = upg, ...))
-            }
+  # Kiel city limits (proof of principle)
+  if(grepl("^Kiel_[0-9]+$",universePolygon)) {
+    Kiel <- as.matrix(fread(system.file("extdata","kiel.csv", package = "EcoAgents")))
+    Kiel_dim <- max(Kiel[,1])
+    Kiel <- Kiel / Kiel_dim
 
-            # Kiel city limits (proof of principle)
-            if(grepl("^Kiel_[0-9]+$",universePolygon)) {
-              Kiel <- as.matrix(fread(system.file("extdata","kiel.csv", package = "EcoAgents")))
-              Kiel_dim <- max(Kiel[,1])
-              Kiel <- Kiel / Kiel_dim
+    x <- as.numeric(sub("^Kiel_(\\S+)$", "\\1", universePolygon)) / 2
+    Kiel <- Kiel * x/2
 
-              x <- as.numeric(sub("^Kiel_(\\S+)$", "\\1", universePolygon)) / 2
-              Kiel <- Kiel * x/2
+    if(x < 10)
+      stop("Kiel latitude dimension too small (min 10 µm).")
 
-              if(x < 10)
-                stop("Kiel latitude dimension too small (min 10 µm).")
+    return(Kiel)
+  }
 
-              return(init.simulation(universePolygon = Kiel, ...))
-            }
-
-            stop(paste0("The polygon preset \"",universePolygon,
-                        "\" does not exist / is not yet supportet."))
-          }
-)
+  stop(paste0("The polygon preset \"",universePolygon,
+              "\" does not exist / is not yet supportet."))
+}
 
 
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 #  Add organism cells to simulation object  #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
-setGeneric(name="add.organism",
-           def=function(object,
-                        model,
-                        name,
-                        ncells,
-                        coords = NULL,
-                        distribution.method = "random_centroid",
-                        distribution.center = NULL,
-                        distribution.radius = NULL,
-                        cellDiameter = (3 * 1 / (4 * pi))^(1/3) * 2, # diameter of sphere with 1 µm^3
-                        cellMassInit = 0.28,
-                        cellMassAtDivision = 0.56,
-                        cellShape = "coccus",
-                        vmax = 11,
-                        scavengeDist = cellDiameter*2.5,
-                        rm.deadends = T,
-                        chemotaxisCompound = NULL,
-                        chemotaxisStrength = NULL,
-                        open.bounds = NULL
-           )
-           {
-             standardGeneric("add.organism")
-           }
-)
-
-#' @title Add a model/organism to simulation
+#' Add a model/organism to simulation
 #'
-#' @description Adds an organism an its genome-scale metabolic network model to the growth simulation object.
+#' Adds an organism an its genome-scale metabolic network model to the growth simulation object.
 #'
 #' @param object S4-object of type \link{growthSimulation}.
 #' @param model The organisms metabolic model of S4-type \link[sybil]{modelorg}
@@ -314,170 +272,170 @@ setGeneric(name="add.organism",
 #' models[['eure']] <- readRDS(system.file("extdata", "eure.RDS", package="EcoAgents"))
 #' models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS", package="EcoAgents"))
 #'
-#' sim <- init.simulation(cbind(c(-150, -150, 150, 150), c(-150, 150, 150, -150)),
+#' sim <- init_simulation(cbind(c(-150, -150, 150, 150), c(-150, 150, 150, -150)),
 #'                        gridFieldSize = 1.75, gridFieldLayers = 5)
 #'
-#' sim <- add.organism(sim, model = models[["eure"]], name = "E. rectale",
+#' sim <- add_organism(sim, model = models[["eure"]], name = "E. rectale",
 #'                     ncells = 15, distribution.radius = 30)
-#' sim <- add.organism(sim, model = models[["bilo"]], name = "B. longum",
+#' sim <- add_organism(sim, model = models[["bilo"]], name = "B. longum",
 #'                     ncells = 15, distribution.radius = 30)
 #'
-#' plot.cells(sim, xlim = c(-50,50), ylim= c(-50,50))
+#' plot_cells(sim, xlim = c(-50,50), ylim= c(-50,50))
 #'
 #' @import particles
 #' @import tidygraph
-#' @import methods
+#' @importFrom methods new
 #' @import rgeos
 #'
 #' @export
-#' @rdname add.organism
-#' @aliases add.organism
-setMethod(f          = "add.organism",
-          signature  = signature(object = "growthSimulation",
-                                 model  = "modelorg",
-                                 name   = "character",
-                                 ncells = "numeric"),
-          definition = function(object,
-                                model,
-                                name,
-                                ncells,
-                                coords = NULL,
-                                distribution.method = "random_centroid",
-                                distribution.center = NULL,
-                                distribution.radius = NULL,
-                                cellDiameter = (3 * 1 / (4 * pi))^(1/3) * 2, # diameter of sphere with 1 µm^3
-                                cellMassInit = 0.28,
-                                cellMassAtDivision = 0.56,
-                                cellShape = "coccus",
-                                vmax = 11,
-                                scavengeDist = cellDiameter*2.5,
-                                rm.deadends = T,
-                                chemotaxisCompound = NULL,
-                                chemotaxisStrength = NULL,
-                                open.bounds = NULL) {
+add_organism <- function(object,
+                         model,
+                         name,
+                         ncells,
+                         coords = NULL,
+                         distribution.method = "random_centroid",
+                         distribution.center = NULL,
+                         distribution.radius = NULL,
+                         cellDiameter = (3 * 1 / (4 * pi))^(1/3) * 2, # diameter of sphere with 1 µm^3
+                         cellMassInit = 0.28,
+                         cellMassAtDivision = 0.56,
+                         cellShape = "coccus",
+                         vmax = 11,
+                         scavengeDist = cellDiameter*2.5,
+                         rm.deadends = T,
+                         chemotaxisCompound = NULL,
+                         chemotaxisStrength = NULL,
+                         open.bounds = NULL) {
+  # sanity checks
+  if(!is.growthSimulation(object))
+    stop("'Object' not of class 'growthSimulation'.")
+  if(!(inherits(model, "modelorg")))
+    stop("'model' not of class 'modelorg'.")
+  if(ncells <= 0 | (ncells %% 1) != 0)
+    stop("'ncells' should be a positive non-zero integer.")
 
-            if(is.null(chemotaxisCompound))
-              chemotaxisCompound <- character(0)
-            if(is.null(chemotaxisStrength))
-              chemotaxisStrength <- double(0)
-            if(length(chemotaxisStrength) != length(chemotaxisCompound))
-              stop("Lengths of 'chemotaxisCompound' and 'chemotaxisStrength' should be equal.")
 
-            # init new organism object
-            object@models[[name]] <- new("Organism",
-                                         cellDiameter = cellDiameter,
-                                         cellMassInit = cellMassInit,
-                                         cellMassAtDivision = cellMassAtDivision,
-                                         vmax = vmax,
-                                         scavengeDist = scavengeDist,
-                                         mod = model,
-                                         rm.deadends = rm.deadends,
-                                         chemotaxisCompound = chemotaxisCompound,
-                                         chemotaxisStrength = chemotaxisStrength,
-                                         open.bounds = open.bounds)
+  if(is.null(chemotaxisCompound))
+    chemotaxisCompound <- character(0)
+  if(is.null(chemotaxisStrength))
+    chemotaxisStrength <- double(0)
+  if(length(chemotaxisStrength) != length(chemotaxisCompound))
+    stop("Lengths of 'chemotaxisCompound' and 'chemotaxisStrength' should be equal.")
 
-            #if not provided -> assign cell positions:
-            if(is.null(coords)) {
-              if(!(distribution.method %in% c("random","random_centroid")))
-                stop("Distribution method not supported. Choose one of \"random\",\"random_centroid\".")
-              universePG <- Polygon(object@universePolygon)
+  # init new organism object
+  object@models[[name]] <- new("Organism",
+                               cellDiameter = cellDiameter,
+                               cellMassInit = cellMassInit,
+                               cellMassAtDivision = cellMassAtDivision,
+                               vmax = vmax,
+                               scavengeDist = scavengeDist,
+                               mod = model,
+                               rm.deadends = rm.deadends,
+                               chemotaxisCompound = chemotaxisCompound,
+                               chemotaxisStrength = chemotaxisStrength,
+                               open.bounds = open.bounds)
 
-              if(distribution.method == "random") {
-                coords  <- spsample(universePG, ncells, type = "random")@coords
-              }
-              if(distribution.method == "random_centroid") {
+  #if not provided -> assign cell positions:
+  if(is.null(coords)) {
+    if(!(distribution.method %in% c("random","random_centroid")))
+      stop("Distribution method not supported. Choose one of \"random\",\"random_centroid\".")
+    universePG <- Polygon(object@universePolygon)
 
-                PGcent <- distribution.center
-                if(is.null(PGcent)) {
-                  PGcent <- SpatialPoints(matrix(universePG@labpt,ncol = 2))
-                } else {
-                  PGcent <- SpatialPoints(matrix(PGcent,ncol = 2))
-                }
+    if(distribution.method == "random") {
+      coords  <- spsample(universePG, ncells, type = "random")@coords
+    }
+    if(distribution.method == "random_centroid") {
 
-                maxRadius <- distribution.radius
-                if(is.null(maxRadius)) {
-                  PGline <- Line(universePG@coords)
-                  PGlines <- SpatialLines(list(Lines(list(PGline), ID = "one")))
-                  maxRadius <- gDistance(PGlines, PGcent) / 3
-                }
+      PGcent <- distribution.center
+      if(is.null(PGcent)) {
+        PGcent <- SpatialPoints(matrix(universePG@labpt,ncol = 2))
+      } else {
+        PGcent <- SpatialPoints(matrix(PGcent,ncol = 2))
+      }
 
-                coords <- matrix(0, ncol = 2, nrow = ncells)
+      maxRadius <- distribution.radius
+      if(is.null(maxRadius)) {
+        PGline <- Line(universePG@coords)
+        PGlines <- SpatialLines(list(Lines(list(PGline), ID = "one")))
+        maxRadius <- gDistance(PGlines, PGcent) / 3
+      }
 
-                r_angle  <- runif(ncells, max = 2*pi)
-                r_radius <- runif(ncells, max = maxRadius)
+      coords <- matrix(0, ncol = 2, nrow = ncells)
 
-                coords[,1] <- cos(r_angle) * r_radius + PGcent@coords[1,1]
-                coords[,2] <- sin(r_angle) * r_radius + PGcent@coords[1,2]
-              }
+      r_angle  <- runif(ncells, max = 2*pi)
+      r_radius <- runif(ncells, max = maxRadius)
 
-            }
+      coords[,1] <- cos(r_angle) * r_radius + PGcent@coords[1,1]
+      coords[,2] <- sin(r_angle) * r_radius + PGcent@coords[1,2]
+    }
 
-            newcells <- data.table(cell = (1:ncells)+nrow(object@cellDT),
-                                   type = name,
-                                   x = coords[,1], y = coords[,2],
-                                   x.vel = 0, y.vel = 0,
-                                   mass = cellMassInit,
-                                   size = cellDiameter,
-                                   parent = NA_integer_)
+  }
 
-            # making sure cells are placed within the universe polygon (trapping cells)
-            # oder: "Schäfchen zurück ins Gehege holen"
-            sim_addorg <- tbl_graph(nodes = newcells, directed = F, node_key = "cell") %>%
-              simulate(setup = predefined_genesis(x = newcells$x,
-                                                  y = newcells$y,
-                                                  x_vel = newcells$x.vel,
-                                                  y_vel = newcells$y.vel)) %>%
-              # wield(collision_force, radius = newcells$size/2, n_iter = 50, strength = 0.7) %>%
-              wield(trap_force, polygon = object@universePolygon, strength = 0.7,
-                    min_dist = 5, distance_falloff = 2) %>%
-              impose(velocity_constraint,
-                     vmax = rep(1, nrow(newcells))) %>%
-              impose(polygon_constraint,
-                     polygon = object@universePolygon)
+  newcells <- data.table(cell = (1:ncells)+nrow(object@cellDT),
+                         type = name,
+                         x = coords[,1], y = coords[,2],
+                         x.vel = 0, y.vel = 0,
+                         mass = cellMassInit,
+                         size = cellDiameter,
+                         parent = NA_integer_)
 
-            keepJittering <- T
-            tmp_currentpos <- c(newcells$x, newcells$y)
-            while(keepJittering) {
-              sim_addorg <- evolve(sim_addorg, steps = 10)
-              if(all(tmp_currentpos == c(sim_addorg$position[,1],sim_addorg$position[,2]))) {
-                keepJittering <- F
-              } else {
-                # handbreak...
-                sim_addorg$velocity[,1] <- sim_addorg$velocity[,1]*0
-                sim_addorg$velocity[,2] <- sim_addorg$velocity[,2]*0
-                tmp_currentpos <- c(sim_addorg$position[,1],sim_addorg$position[,2])
-              }
-            }
+  # making sure cells are placed within the universe polygon (trapping cells)
+  # oder: "Schäfchen zurück ins Gehege holen"
+  sim_addorg <- tbl_graph(nodes = newcells, directed = F, node_key = "cell") %>%
+    simulate(setup = predefined_genesis(x = newcells$x,
+                                        y = newcells$y,
+                                        x_vel = newcells$x.vel,
+                                        y_vel = newcells$y.vel)) %>%
+    # wield(collision_force, radius = newcells$size/2, n_iter = 50, strength = 0.7) %>%
+    wield(trap_force, polygon = object@universePolygon, strength = 0.7,
+          min_dist = 5, distance_falloff = 2) %>%
+    impose(velocity_constraint,
+           vmax = rep(1, nrow(newcells))) %>%
+    impose(polygon_constraint,
+           polygon = object@universePolygon)
 
-            newcells$x <- sim_addorg$position[,1]
-            newcells$y <- sim_addorg$position[,2]
+  keepJittering <- T
+  tmp_currentpos <- c(newcells$x, newcells$y)
+  while(keepJittering) {
+    sim_addorg <- evolve(sim_addorg, steps = 10)
+    if(all(tmp_currentpos == c(sim_addorg$position[,1],sim_addorg$position[,2]))) {
+      keepJittering <- F
+    } else {
+      # handbreak... (setting velocity to 0)
+      sim_addorg$velocity[,1] <- sim_addorg$velocity[,1]*0
+      sim_addorg$velocity[,2] <- sim_addorg$velocity[,2]*0
+      tmp_currentpos <- c(sim_addorg$position[,1],sim_addorg$position[,2])
+    }
+  }
 
-            # add cells to cell info table
-            object@cellDT <- rbind(object@cellDT, newcells)
+  newcells$x <- sim_addorg$position[,1]
+  newcells$y <- sim_addorg$position[,2]
 
-            # add compounds, for which there are exchange reactions in at least one model
-            mod <- object@models[[name]]@mod
+  # add cells to cell info table
+  object@cellDT <- rbind(object@cellDT, newcells)
 
-            dt_exr <- data.table(id = mod@react_id,
-                                 lb = mod@lowbnd,
-                                 name = mod@react_name)
-            dt_exr <- dt_exr[grepl("^EX_", id)]
-            dt_exr[, id := gsub("^EX_","",id)]
-            dt_exr <- dt_exr[id != "cpd11416_c0"]
-            dt_exr[, name := gsub("-e0-e0 Exchange$","",name)]
-            dt_exr[, name := gsub("-e0 Exchange$","",name)]
-            dt_exr[, name := gsub(" Exchange$","",name)]
-            dt_exr[, name := gsub(" exchange$","",name)]
+  # add compounds, for which there are exchange reactions in at least one model
+  mod <- object@models[[name]]@mod
 
-            object <- add.compounds(object,
-                                    compounds = dt_exr$id,
-                                    concentrations = rep(0, nrow(dt_exr)),
-                                    compound.names = dt_exr$name,
-                                    is.constant = rep(FALSE, nrow(dt_exr)))
+  dt_exr <- data.table(id = mod@react_id,
+                       lb = mod@lowbnd,
+                       name = mod@react_name)
+  dt_exr <- dt_exr[grepl("^EX_", id)]
+  dt_exr[, id := gsub("^EX_","",id)]
+  dt_exr <- dt_exr[id != "cpd11416_c0"]
+  dt_exr[, name := gsub("-e0-e0 Exchange$","",name)]
+  dt_exr[, name := gsub("-e0 Exchange$","",name)]
+  dt_exr[, name := gsub(" Exchange$","",name)]
+  dt_exr[, name := gsub(" exchange$","",name)]
 
-            return(object)
-          }
-)
+  object <- add_compounds(object,
+                          compounds = dt_exr$id,
+                          concentrations = rep(0, nrow(dt_exr)),
+                          compound.names = dt_exr$name,
+                          is.constant = rep(FALSE, nrow(dt_exr)))
+
+  return(object)
+}
 
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 # show method for small summary #
@@ -521,15 +479,9 @@ setMethod(f          = "show",
 
 
 
-setGeneric(name="add.compounds",
-           def=function(object, compounds, concentrations,
-                        compound.names = NULL, is.constant = NULL,
-                        compound.D  = NULL)
-           {
-             standardGeneric("add.compounds")
-           }
-)
-
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+# Add compounds to environment  #
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 #' @title Add compounds to the growth environment
 #'
 #' @description The function can be used to add substances to the growth
@@ -557,13 +509,12 @@ setGeneric(name="add.compounds",
 #' compound is new).
 #'
 #' @return Return a S4-object of type \link{growthSimulation}.
-#' @docType methods
 #'
 #' @examples
-#' sim <- init.simulation(cbind(c(-100, -100, 100, 100), c(-100, 100, 100, -100)),
+#' sim <- init_simulation(cbind(c(-100, -100, 100, 100), c(-100, 100, 100, -100)),
 #'                        gridFieldSize = 2, gridFieldLayers = 5)
 #'
-#' sim <- add.compounds(sim,
+#' sim <- add_compounds(sim,
 #'                      compounds = c("cpd00027_e0","cpd00029_e0","cpd00047_e0",
 #'                                    "cpd00159_e0","cpd00211_e0"),
 #'                      concentrations = c(50,0,0,0,0),
@@ -572,109 +523,96 @@ setGeneric(name="add.compounds",
 #'                      is.constant = rep(FALSE, 5))
 #'
 #' @export
-#' @rdname add.compounds
-#' @aliases add.compounds
-setMethod(f          = "add.compounds",
-          signature  = signature(object         = "growthSimulation",
-                                 compounds      = "character",
-                                 concentrations = "numeric"),
-          definition = function(object, compounds, concentrations,
-                                compound.names = NULL,
-                                is.constant = NULL,
-                                compound.D  = NULL) {
+add_compounds <- function(object, compounds, concentrations,
+                          compound.names = NULL,
+                          is.constant = NULL,
+                          compound.D  = NULL) {
+  # Sanity checks
+  if(!is.growthSimulation(object))
+    stop("'Object' not of class 'growthSimulation'.")
 
-            default_D <- 75
+  default_D <- 75
 
-            if(length(compounds) != length(concentrations))
-              stop("Lengths of 'compounds' and 'concentrations' differ.")
+  if(length(compounds) != length(concentrations))
+    stop("Lengths of 'compounds' and 'concentrations' differ.")
 
-            # make compounds non-constant if nothing else is specified
-            if(is.null(is.constant)) {
-              is.constant <- rep(F, length(compounds))
-            }
+  # make compounds non-constant if nothing else is specified
+  if(is.null(is.constant)) {
+    is.constant <- rep(F, length(compounds))
+  }
 
-            # assign each compound the default diffusion coefficient if nothing
-            # else is specified
-            if(is.null(compound.D)) {
-              compound.D <- rep(default_D, length(compounds))
-            } else {
-              compound.D <- ifelse(is.na(compound.D), default_D, compound.D)
-            }
+  # assign each compound the default diffusion coefficient if nothing
+  # else is specified
+  if(is.null(compound.D)) {
+    compound.D <- rep(default_D, length(compounds))
+  } else {
+    compound.D <- ifelse(is.na(compound.D), default_D, compound.D)
+  }
 
-            # if only one diff. coeff. is specified -> use it for all metabolites
-            if(length(compound.D) == 1) {
-              compound.D <- rep(compound.D, length(compounds))
-            }
+  # if only one diff. coeff. is specified -> use it for all metabolites
+  if(length(compound.D) == 1) {
+    compound.D <- rep(compound.D, length(compounds))
+  }
 
-            # is.constant should be NULL (see above) or of length 1 or n (nr. of compounds)
-            if(length(is.constant) != 1 & length(is.constant) != length(compounds)) {
-              stop("Length of 'is.constant' is not 1 or the same length as 'compounds'")
-            }
+  # is.constant should be NULL (see above) or of length 1 or n (nr. of compounds)
+  if(length(is.constant) != 1 & length(is.constant) != length(compounds)) {
+    stop("Length of 'is.constant' is not 1 or the same length as 'compounds'")
+  }
 
-            # compound.D should be NULL (see above) or of length 1 or n (nr. of compounds)
-            if(length(compound.D) != 1 & length(compound.D) != length(compounds)) {
-              stop("Length of 'compound.D' is not 1 or the same length as 'compounds'")
-            }
+  # compound.D should be NULL (see above) or of length 1 or n (nr. of compounds)
+  if(length(compound.D) != 1 & length(compound.D) != length(compounds)) {
+    stop("Length of 'compound.D' is not 1 or the same length as 'compounds'")
+  }
 
-            # extent is.constant vector if only one value
-            if(length(is.constant) == 1) {
-              is.constant <- rep(is.constant, length(compounds))
-            }
+  # extent is.constant vector if only one value
+  if(length(is.constant) == 1) {
+    is.constant <- rep(is.constant, length(compounds))
+  }
 
-            # if no names are supplied -> NA
-            if(is.null(compound.names)) {
-              compound.names <- rep(NA_character_, length(compounds))
-            }
+  # if no names are supplied -> NA
+  if(is.null(compound.names)) {
+    compound.names <- rep(NA_character_, length(compounds))
+  }
 
-            # if length of names is unequal the length of ids -> something's odd
-            if(length(compound.names) != length(compounds)) {
-              stop("Length of 'compound.names' is not the same length als 'compounds'")
-            }
+  # if length of names is unequal the length of ids -> something's odd
+  if(length(compound.names) != length(compounds)) {
+    stop("Length of 'compound.names' is not the same length als 'compounds'")
+  }
 
-            for(i in 1:length(compounds)) {
-              # Metabolite is already present in environment
-              if(compounds[i] %in% object@environ@compounds) {
-                c_ind <- which(object@environ@compounds == compounds[i])
-                object@environ@concentrations[, c_ind] <- object@environ@concentrations[, c_ind] + concentrations[i]
-                object@environ@conc.isConstant[c_ind]  <- is.constant[i]
-                object@environ@compound.D[c_ind]       <- compound.D[i]
-                if(!is.na(compound.names[i]))
-                  object@environ@compound.names[c_ind] <- compound.names[i]
+  for(i in 1:length(compounds)) {
+    # Metabolite is already present in environment
+    if(compounds[i] %in% object@environ@compounds) {
+      c_ind <- which(object@environ@compounds == compounds[i])
+      object@environ@concentrations[, c_ind] <- object@environ@concentrations[, c_ind] + concentrations[i]
+      object@environ@conc.isConstant[c_ind]  <- is.constant[i]
+      object@environ@compound.D[c_ind]       <- compound.D[i]
+      if(!is.na(compound.names[i]))
+        object@environ@compound.names[c_ind] <- compound.names[i]
 
-              # Metabolite is new
-              } else {
-                object@environ@compounds       <- c(object@environ@compounds, compounds[i])
-                object@environ@concentrations  <- cbind(object@environ@concentrations,
-                                                       matrix(concentrations[i], ncol = 1, nrow = object@environ@nfields))
-                object@environ@conc.isConstant <- c(object@environ@conc.isConstant, is.constant[i])
-                object@environ@compound.D      <- c(object@environ@compound.D, compound.D[i])
-                if(!is.na(compound.names[i])) {
-                  if(compound.names[i] %in% object@environ@compound.names) {
-                    warning(paste0("Compound with name '",compound.names[i],"' already exists. Replacing with '",compounds[i],"'."))
-                  }
-                  object@environ@compound.names <- c(object@environ@compound.names, compound.names[i])
-                } else {
-                  object@environ@compound.names <- c(object@environ@compound.names, compounds[i])
-                }
-              }
-            }
+      # Metabolite is new
+    } else {
+      object@environ@compounds       <- c(object@environ@compounds, compounds[i])
+      object@environ@concentrations  <- cbind(object@environ@concentrations,
+                                              matrix(concentrations[i], ncol = 1, nrow = object@environ@nfields))
+      object@environ@conc.isConstant <- c(object@environ@conc.isConstant, is.constant[i])
+      object@environ@compound.D      <- c(object@environ@compound.D, compound.D[i])
+      if(!is.na(compound.names[i])) {
+        if(compound.names[i] %in% object@environ@compound.names) {
+          warning(paste0("Compound with name '",compound.names[i],"' already exists. Replacing with '",compounds[i],"'."))
+        }
+        object@environ@compound.names <- c(object@environ@compound.names, compound.names[i])
+      } else {
+        object@environ@compound.names <- c(object@environ@compound.names, compounds[i])
+      }
+    }
+  }
 
-            return(object)
-          }
-)
+  return(object)
+}
 
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 # Dilute compounds            #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
-setGeneric(name="dilute.compounds",
-           def=function(object, dilution.factor,
-                        compounds = NULL, incl.constant = FALSE,
-                        ...)
-           {
-             standardGeneric("dilute.compounds")
-           }
-)
-
 #' @title Dilute compounds
 #'
 #' @description Dilutes all or selected compounds with a given dilution factor.
@@ -689,97 +627,83 @@ setGeneric(name="dilute.compounds",
 #' should be diluted. Default: FALSE
 #'
 #' @export
-#'
-#' @rdname dilute.compounds
-#' @aliases dilute.compounds
-setMethod(f = "dilute.compounds",
-          signature = signature(object = "growthSimulation",
-                                dilution.factor = "numeric"),
-          definition = function(object, dilution.factor,
-                                compounds = NULL, incl.constant = FALSE) {
+dilute_compounds <- function(object, dilution.factor,
+                             compounds = NULL, incl.constant = FALSE) {
 
-            # sanity checks
-            if(dilution.factor > 1 | dilution.factor < 0) {
-              stop("Dilution factor should be between 0 and 1.")
-            }
+  # sanity checks
+  if(!is.growthSimulation(object))
+    stop("'Object' not of class 'growthSimulation'.")
+  if(dilution.factor > 1 | dilution.factor < 0) {
+    stop("Dilution factor should be between 0 and 1.")
+  }
 
-            if(is.null(compounds))
-              compounds <- object@environ@compounds
+  if(is.null(compounds))
+    compounds <- object@environ@compounds
 
-            available_compounds <- object@environ@compounds
-            if(!incl.constant)
-              available_compounds <- object@environ@compounds[!object@environ@conc.isConstant]
+  available_compounds <- object@environ@compounds
+  if(!incl.constant)
+    available_compounds <- object@environ@compounds[!object@environ@conc.isConstant]
 
-            compounds <- compounds[compounds %in% available_compounds]
+  compounds <- compounds[compounds %in% available_compounds]
 
-            if(length(compounds) == 0) {
-              warning("No valid compounds selected. Returning original simulation object.")
-              return(object)
-            }
+  if(length(compounds) == 0) {
+    warning("No valid compounds selected. Returning original simulation object.")
+    return(object)
+  }
 
-            ind_relcpds <- match(compounds, object@environ@compounds)
+  ind_relcpds <- match(compounds, object@environ@compounds)
 
-            object@environ@concentrations[, ind_relcpds] <- object@environ@concentrations[, ind_relcpds] * (1-dilution.factor)
+  object@environ@concentrations[, ind_relcpds] <- object@environ@concentrations[, ind_relcpds] * (1-dilution.factor)
 
-            return(object)
-          }
-)
+  return(object)
+}
 
 
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 # Summary exchanges           #
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
-setGeneric(name="summary.exchanges",
-           def=function(object, iter = NULL)
-           {
-             standardGeneric("summary.exchanges")
-           }
-)
-
 #' @title Summary of uptake / production by organism type
 #'
 #' @description Uptake/Production rates in fmol summarized by organism type
 #'
 #' @param object S4-object of type \link{growthSimulation}.
-#' @param iter Positive integer number of the simulation step/iteration to plot the rates.
+#' @param iter Positive integer number of the simulation step/iteration to plot
+#' the rates.
 #'
-#' @return A data.table.
+#' @return A data.table
 #'
-#'
-#' @rdname summary.exchanges
-#' @aliases summary.exchanges
-#'
-#' @exportMethod summary.exchanges
-setMethod(f = "summary.exchanges",
-          signature = signature(object = "growthSimulation"),
-          definition = function(object, iter = NULL) {
+#' @export
+summary_exchanges <- function(object, iter = NULL) {
 
-            # Sanity checks
-            if(object@n_rounds < 1)
-              stop("Simulation did not yet run for at least 1 iteration. No exchange rates availabe (yet).")
+  # sanity checks
+  if(!is.growthSimulation(object))
+    stop("'Object' not of class 'growthSimulation'.")
 
-            if(!is.null(iter)) {
-              if(iter > object@n_rounds) {
-                warning(paste0("Simulation did not run ",iter," iterations yet. Displaying results for last iteration (",object@n_rounds,")"))
-                iter <- object@n_rounds
-              }
-            } else {
-              iter <- object@n_rounds
-            }
+  # Sanity checks
+  if(object@n_rounds < 1)
+    stop("Simulation did not yet run for at least 1 iteration. No exchange rates availabe (yet).")
 
-            # data.table X R CMD check workaround
-            type <- compound <- cell <- exflux <- compound.name <- fmol <- NULL
+  if(!is.null(iter)) {
+    if(iter > object@n_rounds) {
+      warning(paste0("Simulation did not run ",iter," iterations yet. Displaying results for last iteration (",object@n_rounds,")"))
+      iter <- object@n_rounds
+    }
+  } else {
+    iter <- object@n_rounds
+  }
 
-            dt_exch <- merge(object@history[[iter]]$cell.exchanges,
-                             object@history[[iter]]$cells[,.(cell, type)],
-                             by = "cell")
-            dt_exch <- dt_exch[, .(fmol = sum(exflux)), by = .(type, compound)]
-            dt_exch[, compound := gsub("^EX_","",compound)]
-            dt_exch <- dt_exch[compound != "cpd11416_c0"] # Biomass...
-            dt_exch$compound.name <- object@environ@compound.names[match(dt_exch$compound,
-                                                                         object@environ@compounds)]
+  # data.table X R CMD check workaround
+  type <- compound <- cell <- exflux <- compound.name <- fmol <- NULL
 
-            return(dt_exch[,.(type, compound, compound.name, fmol)])
+  dt_exch <- merge(object@history[[iter]]$cell.exchanges,
+                   object@history[[iter]]$cells[,.(cell, type)],
+                   by = "cell")
+  dt_exch <- dt_exch[, .(fmol = sum(exflux)), by = .(type, compound)]
+  dt_exch[, compound := gsub("^EX_","",compound)]
+  dt_exch <- dt_exch[compound != "cpd11416_c0"] # Biomass...
+  dt_exch$compound.name <- object@environ@compound.names[match(dt_exch$compound,
+                                                               object@environ@compounds)]
 
-          }
-)
+  return(dt_exch[,.(type, compound, compound.name, fmol)])
+
+}
