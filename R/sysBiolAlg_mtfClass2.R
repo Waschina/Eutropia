@@ -56,17 +56,17 @@ setMethod(f = "initialize",
                                 writeProbToFileName = NULL,
                                 pFBAcoeff = 1e-6,
                                 ...) {
-            
+
             if ( ! missing(model) ) {
 
               stopifnot(is(model, "modelorg"),
                         is(absMAX, "numeric"))
-              
+
               # If wtobj is longer than 1, mtf algorithm has to run several
               # times. In that case, wtobj is not written in the problem
               # object, it is written separately (maxobj) and used for
               # each iteration.
-              
+
               if (length(wtobj) > 1) {
                 maxobj <- wtobj
                 currmo <- 0
@@ -75,8 +75,8 @@ setMethod(f = "initialize",
                 maxobj <- NULL
                 currmo <- wtobj[1]
               }
-              
-              
+
+
               #  the problem: minimize:
               #
               #            |      |      |
@@ -97,35 +97,35 @@ setMethod(f = "initialize",
               #  ub   wt_ub|10000 |10000 |
               #            |      |      |
               #  obj    0  |  1   |  1   |
-              
-              
+
+
               # ---------------------------------------------
               # problem dimensions
               # ---------------------------------------------
-              
+
               nc     <- react_num(model)
               nr     <- met_num(model)
-              
+
               nCols  <- 3*nc
               nRows  <- nr + 2*nc + 1
-              
-              
+
+
               # ---------------------------------------------
               # constraint matrix
               # ---------------------------------------------
-              
+
               # the initial matrix dimensions
               LHS <- Matrix::Matrix(0,
                                     nrow = nRows,
                                     ncol = nCols,
                                     sparse = TRUE)
-              
+
               # rows for the mutant strain
               LHS[1:nr,1:nc] <- S(model)
-              
+
               # location of the mutant strain
               fi <- c(1:nc)
-              
+
               # rows for the delta match matrix
               I <- matrix(c((nr+1)   :(nr+nc)  ,1       :nc    ),ncol=2); LHS[I] <- 1
               I <- matrix(c((nr+1)   :(nr+nc)  ,(nc+1)  :(2*nc)),ncol=2); LHS[I] <- 1
@@ -135,34 +135,34 @@ setMethod(f = "initialize",
               # diag(LHS[(nr+1)   :(nr+nc)  ,(nc+1)  :(2*nc)]) <-  1
               # diag(LHS[(nr+nc+1):(nr+2*nc),1       :nc    ]) <- -1
               # diag(LHS[(nr+nc+1):(nr+2*nc),(2*nc+1):(3*nc)]) <-  1
-              
+
               # fix the value of the objective function
               #LHS[(nr+2*nc+1),1:nc] <- obj_coef(model)
               LHS[(nr+2*nc+1),1:nc] <- 0
-              
-              
+
+
               # ---------------------------------------------
               # columns
               # ---------------------------------------------
-              
+
               lower  <- c(lowbnd(model), rep(0, 2*nc))
               upper  <- c(uppbnd(model), rep(absMAX, 2*nc))
-              
-              
+
+
               # ---------------------------------------------
               # rows
               # ---------------------------------------------
-              
+
               #rlower <- c(rhs(model), rep(0, 2*nc), currmo)
               #rupper <- c(rhs(model), rep(absMAX, 2*nc + 1))
               rlower <- c(rep(0, nr), rep(0, 2*nc), 0)
               rupper <- c(rep(0, nr), rep(absMAX, 2*nc + 1))
               rtype  <- c(rep("E", nr), rep("L", 2*nc + 1))
-              
+
               # ---------------------------------------------
               # objective function
               # ---------------------------------------------
-              
+
               if (is.null(costcoeffw)) {
                 fw <- rep(1, nc)
               }
@@ -171,7 +171,7 @@ setMethod(f = "initialize",
                           (length(costcoeffw) == nc))
                 fw <- costcoeffw
               }
-              
+
               if (is.null(costcoefbw)) {
                 bw <- fw
               }
@@ -180,16 +180,16 @@ setMethod(f = "initialize",
                           (length(costcoefbw) == nc))
                 bw <- costcoefbw
               }
-              
-              
+
+
               #cobj <- c(rep(0, nc), bw, fw)
               cobj <- c(obj_coef(model), -bw*pFBAcoeff, -fw*pFBAcoeff)
-              
-              
+
+
               # ---------------------------------------------
               # row and column names for the problem object
               # ---------------------------------------------
-              
+
               if (isTRUE(useNames)) {
                 if (is.null(cnames)) {
                   cn <- c(react_id(model),
@@ -203,7 +203,7 @@ setMethod(f = "initialize",
                             length(cnames) == nCols)
                   colNames <- cnames
                 }
-                
+
                 if (is.null(rnames)) {
                   rn <- c(met_id(model),
                           paste("bw", 1:nc, sep = "_"),
@@ -217,7 +217,7 @@ setMethod(f = "initialize",
                             length(rnames) == nRows)
                   rowNames <- rnames
                 }
-                
+
                 if (is.null(pname)) {
                   probName <- .makeLPcompatible(
                     paste("MTF", mod_id(model), sep = "_"),
@@ -234,12 +234,12 @@ setMethod(f = "initialize",
                 rowNames <- NULL
                 probName <- NULL
               }
-              
-              
+
+
               # ---------------------------------------------
               # build problem object
               # ---------------------------------------------
-              
+
               .Object <- callNextMethod(.Object,
                                         sbalg      = "mtf",
                                         pType      = "lp",
@@ -263,9 +263,9 @@ setMethod(f = "initialize",
                                                           "costcoefbw" = bw,
                                                           "costcoeffw" = fw),
                                         ...)
-              
+
               ##.Object@maxobj <- as.numeric(maxobj)
-              
+
               if (!is.null(writeProbToFileName)) {
                 writeProb(problem(.Object),
                           fname = as.character(writeProbToFileName))
@@ -310,7 +310,7 @@ setMethod(f = "initialize",
               #                  .Object@nc        <- as.integer(nCols)
               #                  .Object@fldind    <- as.integer(fi)
               #                  validObject(.Object)
-              
+
             }
             return(.Object)
           }
@@ -323,12 +323,12 @@ setMethod(f = "initialize",
 
 setMethod("changeMaxObj", signature(object = "sysBiolAlg_mtf"),
           function(object, j) {
-            
+
             if (!is.null(object@maxobj)) {
               changeRowsBnds(problem(object), i = nr(object),
                              lb = object@maxobj[j], ub = SYBIL_SETTINGS("MAXIMUM"))
             }
-            
+
             return(invisible(TRUE))
           }
 )

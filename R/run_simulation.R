@@ -81,7 +81,8 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
 
   # devtools::check() does not recognize column names as variables and
   # throws warnings. This is prevented by assigned these names to NULL
-  # TODO
+  # https://github.com/Rdatatable/data.table/issues/850
+
 
   # initialize multi core processing (with a copy of each model in warm for each parallel fork)
   cmad <- unlist(lapply(object@models, function(x) x@cellMassAtDivision))
@@ -115,7 +116,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
 
   # get grid field positions as data.table
   gridDT <- as.data.table(object@environ@field.pts)
-  gridDT[, field := 1:.N]
+  gridDT[, "field" := 1:.N]
   setkeyv(gridDT, c("z","x","y"))
 
   # get organims' scvenge radius
@@ -173,15 +174,15 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
 
     pre_celFieldEnv <- lapply(1:ncells, FUN = function(i) {
       res <- list()
-      res[["x"]]      <- object@cellDT[i, x]
-      res[["y"]]      <- object@cellDT[i, y]
-      res[["size"]]   <- object@cellDT[i, size]
-      res[["scvr"]]   <- get_scv_radius(object@cellDT[i, type]) # scavenge radius
+      res[["x"]]      <- object@cellDT[i, get("x")]
+      res[["y"]]      <- object@cellDT[i, get("y")]
+      res[["size"]]   <- object@cellDT[i, get("size")]
+      res[["scvr"]]   <- get_scv_radius(object@cellDT[i, get("type")]) # scavenge radius
       # TODO: There's probably a smarter way of doing the next command - but works for now
       # it gets all grid field in the cube surrounding the cell
-      res[["gridLC"]] <- gridDT[abs(x - res[["x"]]) <= (res[["size"]] /2 + res[["scvr"]]) &
-                                  abs(y - res[["y"]]) <= (res[["size"]] /2 + res[["scvr"]]) &
-                                  abs(z - 0                  ) <= (res[["size"]] /2 + res[["scvr"]])]
+      res[["gridLC"]] <- gridDT[abs(get("x") - res[["x"]]) <= (res[["size"]] /2 + res[["scvr"]]) &
+                                  abs(get("y") - res[["y"]]) <= (res[["size"]] /2 + res[["scvr"]]) &
+                                  abs(get("z") - 0         ) <= (res[["size"]] /2 + res[["scvr"]])]
       return(res)
 
     })
@@ -189,37 +190,38 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
     cellFieldEnv <- parLapply(cl, pre_celFieldEnv, get_cellFieldEnv_ex)
 
     # close cells may claim in sum more than 100% of the resources from a field
-    # Proportianally scale down accessibility in those cases:
+    # Proportionally scale down accessibility in those cases:
+    field_claim_sum = acc.prop = acc.prop.tmp = NULL
     cellFieldEnv <- rbindlist(cellFieldEnv, idcol = T)
-    cellFieldEnv[, field_claim_sum := sum(acc.prop), by = field.id]
+    cellFieldEnv[, field_claim_sum := sum(acc.prop), by = "field.id"]
     cellFieldEnv[field_claim_sum > 1, acc.prop.tmp := acc.prop^exp(1)]
-    cellFieldEnv[field_claim_sum > 1, acc.prop.tmp := acc.prop.tmp / sum(acc.prop.tmp) * field_claim_sum, by = field.id]
+    cellFieldEnv[field_claim_sum > 1, acc.prop.tmp := acc.prop.tmp / sum(acc.prop.tmp) * field_claim_sum, by = "field.id"]
     cellFieldEnv[field_claim_sum > 1, acc.prop := acc.prop.tmp / field_claim_sum]
 
     cellFieldEnv <- lapply(1:ncells, FUN = function(x) {
       res <- list()
-      res[["field.id"]]    <- cellFieldEnv[.id == x, field.id]
-      res[["field.dist"]]  <- cellFieldEnv[.id == x, field.dist]
-      res[["acc.prop"]]    <- cellFieldEnv[.id == x, acc.prop]
+      res[["field.id"]]    <- cellFieldEnv[get(".id") == x, get("field.id")]
+      res[["field.dist"]]  <- cellFieldEnv[get(".id") == x, get("field.dist")]
+      res[["acc.prop"]]    <- cellFieldEnv[get(".id") == x, get("acc.prop")]
 
       res[["field.conc"]]  <- object@environ@concentrations[res[["field.id"]],]
       res[["field.cpds"]]  <- object@environ@compounds
       res[["field.execs"]] <- names(object@environ@exoenzymes)
       res[["fieldVol"]]    <- object@environ@fieldVol
-      res[["model"]]       <- object@models[[object@cellDT[x, type]]]
+      res[["model"]]       <- object@models[[object@cellDT[x, get("type")]]]
       res[["deltaTime"]]   <- object@deltaTime
 
-      res[["type"]]        <- object@cellDT[x, type]
-      res[["cMass"]]       <- object@cellDT[x, mass]
-      res[["size"]]        <- object@cellDT[x, size]
+      res[["type"]]        <- object@cellDT[x, get("type")]
+      res[["cMass"]]       <- object@cellDT[x, get("mass")]
+      res[["size"]]        <- object@cellDT[x, get("size")]
 
       # Chemotaxis
       res[["CT.x"]]       <- 0
       res[["CT.y"]]       <- 0
-      ic_x <- object@cellDT[x,`x`]
-      ic_y <- object@cellDT[x,`y`]
-      for(icpd in object@models[[object@cellDT[x, type]]]@chemotaxisCompound) {
-        ind_ct <- which(object@models[[object@cellDT[x, type]]]@chemotaxisCompound == icpd)
+      ic_x <- object@cellDT[x, get("x")]
+      ic_y <- object@cellDT[x, get("y")]
+      for(icpd in object@models[[object@cellDT[x, get("type")]]]@chemotaxisCompound) {
+        ind_ct <- which(object@models[[object@cellDT[x, get("type")]]]@chemotaxisCompound == icpd)
         ind <- which(res[["field.cpds"]] == icpd)
         delta_field_x <- object@environ@field.pts[res[["field.id"]]]$x - ic_x
         delta_field_y <- object@environ@field.pts[res[["field.id"]]]$y - ic_y
@@ -230,8 +232,8 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
         f_conc <- f_conc/sum(f_conc)
 
 
-        res[["CT.x"]] <- res[["CT.x"]] + weighted.mean(delta_field_x, f_conc) * object@models[[object@cellDT[x, type]]]@chemotaxisStrength[ind_ct]
-        res[["CT.y"]] <- res[["CT.y"]] + weighted.mean(delta_field_y, f_conc) * object@models[[object@cellDT[x, type]]]@chemotaxisStrength[ind_ct]
+        res[["CT.x"]] <- res[["CT.x"]] + weighted.mean(delta_field_x, f_conc) * object@models[[object@cellDT[x, get("type")]]]@chemotaxisStrength[ind_ct]
+        res[["CT.y"]] <- res[["CT.y"]] + weighted.mean(delta_field_y, f_conc) * object@models[[object@cellDT[x, get("type")]]]@chemotaxisStrength[ind_ct]
       }
 
       return(res)
@@ -251,9 +253,9 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
     if(verbose > 1)
       cat("... update environment\n", sep ='')
     I <- rbindlist(lapply(agFBA_results, function(x) rbindlist(list(x$I.up, x$I.pd))))
-    I <- I[, .(concChange = sum(concChange)), by = c("field.id", "concMatInd")]
+    I <- I[, list("concChange" = sum(get("concChange"))), by = c("field.id", "concMatInd")]
     ind_var <- which(!object@environ@conc.isConstant)
-    I <- I[concMatInd %in% ind_var]
+    I <- I[get("concMatInd") %in% ind_var]
     I <- as.matrix(I)
 
     I[,3] <- ifelse(is.na(I[,3]), 0, I[,3]) # TODO: Check where NA originate from
@@ -264,7 +266,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
 
     # exoenzymes
     I.exec <- rbindlist(lapply(agFBA_results, function(x) x$I.exec.pd))
-    I.exec <- I.exec[, .(concChange = sum(concChange)), by = c("field.id", "concMatInd")]
+    I.exec <- I.exec[, list("concChange" = sum(get("concChange"))), by = c("field.id", "concMatInd")]
     I.exec <- as.matrix(I.exec)
 
     I.exec[,3] <- ifelse(is.na(I.exec[,3]), 0, I.exec[,3]) # TODO: Check where NA originate come from
@@ -287,6 +289,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
 
         S_0 <- object@environ@concentrations[,met_inds[1]] # current Substrate concentration
 
+        # DOI: 10.1016/j.bej.2012.01.010
         S_t <- exec@Km * lambertW0(S_0/exec@Km * exp((S_0 - exec.vmax * object@deltaTime * 60 * 60)/exec@Km))
 
         dS <- S_0 - S_t
@@ -299,7 +302,6 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
             object@environ@concentrations[,met_inds[i]] <-
               object@environ@concentrations[,met_inds[i]] + exec@stoich[i] * dS
           }
-
         }
 
         k <- k + 1
@@ -343,31 +345,31 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
     object@cellDT$size <- unlist(lapply(agFBA_results, function(x) x$cSize_new))
 
 
-    object@cellDT[, cellMassAtDivision := cmad[type]]
+    object@cellDT[, "cellMassAtDivision" := cmad[get("type")]]
 
     gind <- which(object@cellDT$mass >= object@cellDT$cellMassAtDivision)
     if(length(gind) > 0) {
       newCells <- copy(object@cellDT[gind])
-      newCells[, parent := cell] # save parent information
-      newCells[, cell := 1:.N]
-      newCells[, cell := cell + ncells]
+      newCells[, "parent" := get("cell")] # save parent information
+      newCells[, "cell" := 1:.N]
+      newCells[, "cell" := get("cell") + ncells]
 
       # update cell mass and size of divided cells
       object@cellDT <- rbind(object@cellDT, newCells)
-      object@cellDT[mass >= cellMassAtDivision, size := size * 0.5^(1/3)]
-      object@cellDT[mass >= cellMassAtDivision, mass := mass / 2]
+      object@cellDT[get("mass") >= get("cellMassAtDivision"), "size" := get("size") * 0.5^(1/3)]
+      object@cellDT[get("mass") >= get("cellMassAtDivision"), "mass" := get("mass") / 2]
       rm(newCells)
 
       # place daughter cell next to parent cell (random angle/direction)
-      object@cellDT[`cell` > ncells, x := x + size * cos(stats::runif(.N, max = 2*pi))]
-      object@cellDT[`cell` > ncells, y := y + size * sin(stats::runif(.N, max = 2*pi))]
+      object@cellDT[get("cell") > ncells, "x" := get("x") + get("size") * cos(stats::runif(.N, max = 2*pi))]
+      object@cellDT[get("cell") > ncells, "y" := get("y") + get("size") * sin(stats::runif(.N, max = 2*pi))]
 
       # invert velocity of daughter cells
-      object@cellDT[`cell` > ncells, x.vel := x.vel * (-1)]
-      object@cellDT[`cell` > ncells, y.vel := y.vel * (-1)]
+      object@cellDT[get("cell") > ncells, "x.vel" := get("x.vel") * (-1)]
+      object@cellDT[get("cell") > ncells, "y.vel" := get("y.vel") * (-1)]
     }
 
-    object@cellDT[, cellMassAtDivision := NULL]
+    object@cellDT[, "cellMassAtDivision" := NULL]
 
     ncells_new <- nrow(object@cellDT)
 
@@ -485,8 +487,8 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
 
     # small cell summary
     if(verbose > 0) {
-      cellsum <- copy(object@cellDT[,.(mass = round(sum(mass), digits = 2)), by = type])
-      cellsum[, tmp.sum := paste0(type,"(",mass,")")]
+      cellsum <- copy(object@cellDT[, list("mass" = round(sum(get("mass")), digits = 2)), by = "type"])
+      cellsum[, "tmp.sum" := paste0(get("type"),"(",get("mass"),")")]
       cellsum <- paste(cellsum$tmp.sum, collapse = " ")
       cat("           ",cellsum,"\n", sep ='')
     }
@@ -538,7 +540,7 @@ get_cellFieldEnv_ex <- function(x) {
   icell_size <- x$size
   scv_dist   <- x$scvr
 
-  gsp  <- SpatialPoints(x$gridLC[,.(x,y,z)])
+  gsp  <- SpatialPoints(x$gridLC[,list("x"=get("x"),"y"=get("y"),"z"=get("z"))])
 
   csp <- SpatialPoints(matrix(c(icell_x, icell_y, 0), ncol = 3))
   q.c.dist <- spDists(gsp, csp)[,1]
@@ -552,7 +554,7 @@ get_cellFieldEnv_ex <- function(x) {
   accPortion <-  - 1 / scv_dist * (qry.dist - (icell_size/2 + scv_dist))
   accPortion <- ifelse(accPortion > 1, 1, accPortion)
 
-  return(data.table(field.id   = x$gridLC[qry.env, field],
+  return(data.table(field.id   = x$gridLC[qry.env, get("field")],
                     field.dist = qry.dist,
                     acc.prop   = accPortion))
 }
@@ -607,7 +609,7 @@ agentFBA_ex <- function(x) {
   ex.flx <- sol.fba$fluxes[ex.ind]
   names(ex.flx) <- x$model@mod@react_id[ex.ind]
   ex.flx <- ex.flx[abs(ex.flx) > 0]
-  # normalise to time and cell mass
+  # normalize to time and cell mass
   ex.flx <- ex.flx * x$cMass * x$deltaTime # uptake / production in absolute fmol in this time step and by this cell of its specific mass
 
   # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
