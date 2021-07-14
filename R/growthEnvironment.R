@@ -284,15 +284,18 @@ diffuse_compounds <- function(object, deltaTime, cl, n.cores) {
   n.chunks <- n.cores
   ind_variable <- which(apply(object@concentrations,2,sd) > 0 & object@compound.D > 0)
 
-  if(length(ind_variable) / n.chunks < 3)
-    n.chunks <- ceiling(n.chunks/2)
 
-  ind_var_chunks <- split(ind_variable,
-                          cut(seq_along(ind_variable),
-                              n.chunks, labels = F))
 
   # no variable compounds -> no need for diffusion
   if(length(ind_variable) > 0) {
+
+    if(length(ind_variable) / n.chunks < 3)
+      n.chunks <- ceiling(n.chunks/2)
+
+    ind_var_chunks <- split(ind_variable,
+                            cut(seq_along(ind_variable),
+                                n.chunks, labels = F))
+
     # VIA RccpArmadillo
     conc.list.tmp <- lapply(ind_var_chunks, function(x) {
 
