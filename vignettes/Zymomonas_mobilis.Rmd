@@ -1,0 +1,25 @@
+---
+title: "Chemotaxis and exoenzymes in *Zymomonas mobilis*"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Zymomonas_mobilis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(EcoAgents)
+```
+
+```{r}
+# Add two numbers together
+add <- function(a, b) a + b
+add(10, 20)
+```
