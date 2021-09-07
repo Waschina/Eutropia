@@ -44,9 +44,9 @@ Available universe polygon presets:
   dish in µm.}
   \item{"rectangle_<X>_<Y>"}{ is a, *surprise*, rectangle. `<X>` and `<Y>` should be
   integers specifying the width and height in µm, respectively.}
-  \item{"Kiel_<L>"}{ lets microbes thrive within Kiel's city limits. Use `<L>`
-  to specify the latitude dimension in µm (integer). The longitude is scaled
-  accordingly.}
+  \item{"Kiel_<L>"}{ let microbes thrive within Kiel's city limits. Use `<L>`
+  to specify the latitude dimension in µm (integer). The longitude is automatically
+  scaled accordingly.}
 }
 }
 \examples{

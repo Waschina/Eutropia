@@ -18,6 +18,7 @@ knitr::opts_chunk$set(
 library(EcoAgents)
 ```
 
+
 ```{r}
 # Add two numbers together
 add <- function(a, b) a + b

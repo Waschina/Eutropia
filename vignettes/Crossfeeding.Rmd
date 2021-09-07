@@ -1,0 +1,123 @@
+---
+title: "Cross-feeding of two gastrointestinal bacteria"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Crossfeeding}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(EcoAgents)
+```
+
+## Background
+The intestinal bacterium *Eubacterium rectale* is known to be able to use acetate as energy source under anaerobic conditions and thereby forms butyrate as end product (Rivère et al. (2015) Appl Envrion Microbiol). Acetate is a common fermentation end product in a number of different other intestinal bacteria, including Bifidobacteria (e.g. *Bifidobacterium longum*). In this tutorial, a co-culture experiment of both species is simulated in an aerobic environment that contains glucose as sole source of carbon an energy. It will be tested if acetate cross-feeding occurs and how the organism's affect each others population growth.
+
+## The setup
+
+As growth environment, a Petri dish-shaped growth area will be defined with a radius of 80 micro meters. The space metabolite concentrations is rasterized by rhombic dodecahedrons of size 1 µm (distance between field centers). The chemical growth environment consists of 8 field layers in height.
+```{r}
+# create simulation environment
+sim <- init_simulation("Petri_80",
+                       gridFieldSize = 1,
+                       gridFieldLayers = 8)
+```
+
+Next, we will read the models for both organisms and place 15 cells each in the growth environment.
+```{r}
+
+# add organisms (15 cells of each as 'starter culture')
+models <- list()
+models[['eure']] <- readRDS(system.file("extdata", "eure.RDS", package="EcoAgents"))
+models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS", package="EcoAgents"))
+
+sim <- add_organism(sim, model = models[['eure']], name = "E. rectale",
+                    ncells = 15, distribution.radius = 25,
+                    open.bounds = 1)
+sim <- add_organism(sim, model = models[['bilo']], name = "B. longum",
+                    ncells = 15, distribution.radius = 25,
+                    open.bounds = 1)
+```
+
+It is not required, but out of curiosity the intial spatial distribution of cells can be plotted
+
+```{r fig.height=5}
+plot_cells(sim,
+           scalebar.color = "black")
+```
+
+Now we have an simulation object with cells. What so far missing are nutrients, or a growth medium.
+
+```{r}
+# Load a medium table
+dt_medium <- fread(system.file("extdata", "medium.csv", package="EcoAgents"))
+
+# adding compounds
+sim <- add_compounds(sim,
+                     compounds = dt_medium$cpd.id,
+                     concentrations = dt_medium$mM,
+                     compound.names = dt_medium$cpd.name,
+                     is.constant = dt_medium$is.constant)
+```
+
+## The simulation
+
+We are all set to run our first simulation. It will run for 50 iterations (= 500 minutes simulated time). The simulation may take between 5 to 10 minutes to finish.
+
+```{r}
+sim <- run_simulation(sim, niter = 50, verbose = 1)
+```
+
+## Analyse the environment after the simulation
+
+The package comes with a number of function to plot simulation results.
+
+```{r fig.height=5}
+# Plot spatial distribution of cells
+plot_cells(sim,
+           scalebar.color = "black")
+```
+
+```{r}
+# Spatial distribution of glucose
+plot_environment(sim, compounds = c("cpd00027_e0"),
+                 scalebar.color = "black")
+```
+
+```{r fig.height=3, fig.width=9}
+# Spatial distribution of acetate, lactate and butyrate
+plot_environment(sim,
+                 compounds = c("cpd00029_e0","cpd00211_e0","cpd00159_e0"),
+                 scalebar.color = "black")
+```
+
+```{r fig.width=5}
+# growth curves (total cell mass by species)
+plot_growth(sim)
+```
+
+```{r fig.width=5}
+# dynamics in metabolite concentrations (calculated by total environment volume)
+plot_compounds(sim, compounds = c("cpd00029_e0","cpd00211_e0","cpd00159_e0"))
+```
+
+The consumed and produced metabolites can be retrieved for the simulations.
+
+```{r}
+summary_exchanges(sim)
+```
+
+In addition, the same information can be retrieved for earlier iterations in the simulation.
+```{r}
+summary_exchanges(sim, iter = 25)
+```
+
+The results should clearly show that, while acetate is produced by *B. longum*, it is consumed by *E. rectale*.
