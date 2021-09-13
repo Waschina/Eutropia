@@ -16,8 +16,14 @@
 #' a cell can scavenge nutrients from its surrounding. Unit: µm
 #' @slot chemotaxisCompound Character vector with the compound IDs that influence
 #' the cells chemotaxis behavior.
-#' @slot chemotaxisStrength Numeric vector indicating the strength of chemotaxis.
-#' Positive: attracting; Negative: Repelling
+#' @slot chemotaxisStrength Numeric vector that indicates the strength of
+#' chemotaxis. Positive value for attraction; Negative for repelling effect. A
+#' value of 1 indicates that in case of a maximum gradient (concentration-weighted
+#' center in cell's scavenge area is at the edge of the area) the cell moves
+#' with its maximum speed (vmax) in the direction of the gradient.
+#' @slot chemotaxisHillKA Numeric vector for K_A value in Hill equation in
+#' chemotactic metabolite sensing. Unit: mM
+#' @slot chemotaxisHillCoef Numeric vector for the Hill coefficient. Unitless
 #' @slot mod Object of S4-class \link[sybil]{modelorg} for the organisms metabolic
 #' network model.
 #' @slot exoenzymes Character vector of IDs of the organism's exoenzymes
@@ -33,8 +39,12 @@ setClass("Organism",
            cellShape          = "character", # currently only coccus
            vmax               = "numeric", # in µm/s
            scavengeDist       = "numeric", # in µm
+
+           # Chemotaxis
            chemotaxisCompound = "character",
-           chemotaxisStrength = "numeric", # between 1 (attracting) and -1 (repelling)
+           chemotaxisStrength = "numeric", # positive (attracting) and negative (repelling)
+           chemotaxisHillKA   = "numeric",
+           chemotaxisHillCoef = "numeric",
 
            # Genome-scale model for FBA / pFBA
            mod      = "modelorg",
@@ -58,6 +68,8 @@ setMethod("initialize", "Organism",
                    rm.deadends,
                    chemotaxisCompound,
                    chemotaxisStrength,
+                   chemotaxisHillKA,
+                   chemotaxisHillCoef,
                    open.bounds,
                    ...) {
             .Object <- callNextMethod(.Object, ...)
@@ -74,6 +86,8 @@ setMethod("initialize", "Organism",
             .Object@scavengeDist <- scavengeDist
             .Object@chemotaxisCompound <- chemotaxisCompound
             .Object@chemotaxisStrength <- chemotaxisStrength
+            .Object@chemotaxisHillKA   <- chemotaxisHillKA
+            .Object@chemotaxisHillCoef <- chemotaxisHillCoef
 
             .Object@exoenzymes <- character(0)
             .Object@exoenzymes.prod <- double(0)

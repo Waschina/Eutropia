@@ -23,7 +23,7 @@ The intestinal bacterium *Eubacterium rectale* is known to be able to use acetat
 
 ## The setup
 
-As growth environment, a Petri dish-shaped growth area will be defined with a radius of 80 micro meters. The space metabolite concentrations is rasterized by rhombic dodecahedrons of size 1 µm (distance between field centers). The chemical growth environment consists of 8 field layers in height.
+As growth environment, a Petri dish-shaped growth area will be defined with a radius of 80 micro meters. The space for metabolite concentrations is rasterized by rhombic dodecahedrons of size 1 µm (distance between adjacent field centers). The chemical growth environment consists of 8 field layers in height.
 ```{r}
 # create simulation environment
 sim <- init_simulation("Petri_80",
@@ -33,7 +33,6 @@ sim <- init_simulation("Petri_80",
 
 Next, we will read the models for both organisms and place 15 cells each in the growth environment.
 ```{r}
-
 # add organisms (15 cells of each as 'starter culture')
 models <- list()
 models[['eure']] <- readRDS(system.file("extdata", "eure.RDS", package="EcoAgents"))
@@ -47,14 +46,14 @@ sim <- add_organism(sim, model = models[['bilo']], name = "B. longum",
                     open.bounds = 1)
 ```
 
-It is not required, but out of curiosity the intial spatial distribution of cells can be plotted
+It is not required, but out of curiosity the initial spatial distribution of cells can be plotted.
 
 ```{r fig.height=5}
 plot_cells(sim,
            scalebar.color = "black")
 ```
 
-Now we have an simulation object with cells. What so far missing are nutrients, or a growth medium.
+Now we have an simulation object with cells. What so far is missing are nutrients, or a growth medium.
 
 ```{r}
 # Load a medium table
@@ -78,12 +77,11 @@ sim <- run_simulation(sim, niter = 50, verbose = 1)
 
 ## Analyse the environment after the simulation
 
-The package comes with a number of function to plot simulation results.
+The package comes with a number of functions to plot simulation results.
 
 ```{r fig.height=5}
 # Plot spatial distribution of cells
-plot_cells(sim,
-           scalebar.color = "black")
+plot_cells(sim, scalebar.color = "black")
 ```
 
 ```{r}
@@ -110,7 +108,6 @@ plot_compounds(sim, compounds = c("cpd00029_e0","cpd00211_e0","cpd00159_e0"))
 ```
 
 The consumed and produced metabolites can be retrieved for the simulations.
-
 ```{r}
 summary_exchanges(sim)
 ```

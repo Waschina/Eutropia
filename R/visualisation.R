@@ -20,6 +20,11 @@
 #' @export
 plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
                        scalebar.color = "white") {
+  if(object@n_rounds == 0 & !is.null(iter)) {
+    if(iter != 0)
+      warning("Simulation did not run yet. Showing initial simulation status.")
+    iter <- NULL
+  }
 
   # sanity checks
   if(!is.growthSimulation(object))
@@ -50,7 +55,7 @@ plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
       iter <- object@n_rounds
     }
     i_round <- iter
-    cellposDT <- object@history[[iter]]$cells
+    cellposDT <- object@history[[iter+1]]$cells
   }
 
   # get expansion factor so scale bar is not to close to panel margins
@@ -167,6 +172,11 @@ plot_environment <- function(object, compounds, compound.names = NULL,
                              xlim = NULL, ylim = NULL, iter = NULL,
                              scalebar.color = "white", layer = 0,
                              gradient.limits = NULL, gradient.option = "viridis") {
+  if(object@n_rounds == 0 & !is.null(iter)) {
+    if(iter != 0)
+      warning("Simulation did not run yet. Showing initial simulation status.")
+    iter <- NULL
+  }
 
   # sanity checks
   if(!is.growthSimulation(object))
@@ -232,24 +242,24 @@ plot_environment <- function(object, compounds, compound.names = NULL,
     envDT <- data.table(object@environ@concentrations)
     names(envDT) <- object@environ@compounds
   } else {
-    if(is.null(object@history[[iter]]$compounds))
+    if(is.null(object@history[[iter+1]]$compounds))
       stop(paste0("No compound concentrations were recorded at iteration ",
                   iter, "."))
 
-    compounds <- compounds[compounds %in% object@history[[iter]]$compounds]
+    compounds <- compounds[compounds %in% object@history[[iter+1]]$compounds]
     if(length(compounds) == 0)
       stop(paste0("None of the compounds have recorded concentrations at iteration",
                  iter, "."))
 
-    if(!file.exists(object@history[[iter]]$compounds.record))
+    if(!file.exists(object@history[[iter+1]]$compounds.record))
       stop(paste0("Compound recording file ",
-                  object@history[[iter]]$compounds.record,
+                  object@history[[iter+1]]$compounds.record,
                   " not found."))
 
     i_round <- iter
 
-    envDT <- readRDS(object@history[[iter]]$compounds.record)
-    names(envDT) <- object@history[[iter]]$compounds
+    envDT <- readRDS(object@history[[iter+1]]$compounds.record)
+    names(envDT) <- object@history[[iter+1]]$compounds
   }
 
 
@@ -345,6 +355,11 @@ plot_environment_exoenzymes <- function(object, exoenzymes, exoenzyme.names = NU
                                         xlim = NULL, ylim = NULL, iter = NULL,
                                         scalebar.color = "white", layer = 0,
                                         gradient.limits = NULL, gradient.option = "viridis") {
+  if(object@n_rounds == 0 & !is.null(iter)) {
+    if(iter != 0)
+      warning("Simulation did not run yet. Showing initial simulation status.")
+    iter <- NULL
+  }
 
   # Argument sanity check
   if(!is.growthSimulation(object))
@@ -398,6 +413,7 @@ plot_environment_exoenzymes <- function(object, exoenzymes, exoenzyme.names = NU
     envDT <- data.table(object@environ@exoenzymes.conc)
   } else {
     # TODO: When a former simulation step is selected
+    stop("Plotting spatial distribution of exoenymes for past iterations is not yet implemented.")
   }
 
   names(envDT) <- names(object@environ@exoenzymes)

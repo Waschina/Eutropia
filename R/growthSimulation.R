@@ -233,7 +233,7 @@ universe_polygon_preset <- function(universePolygon) {
 #' daughter cells. Default: 0.56 pg
 #' @param cellShape character. Shape of cells. Currently only "coccus" is
 #' supported.
-#' @param vmax double. Maximum velocity of a cell in µm per minute.
+#' @param vmax double. Maximum velocity of a cell in µm per second.
 #' @param scavengeDist double. Distance in µm a cell can scavenge nutrients from
 #' its surrounding/microoenvironment.
 #' @param rm.deadends If TRUE, dead-end metabolites and reactions are removed
@@ -241,8 +241,15 @@ universe_polygon_preset <- function(universePolygon) {
 #' otherwise no effect on the flux distribution solutions.
 #' @param chemotaxisCompound Character vector of compound IDs, that are signals
 #' for directed movement of the organism.
-#' @param chemotaxisStrength Numeric vector that indicated the strength of
-#' chemotaxis. Positive value for attraction; Negative for repelling effect.
+#' @param chemotaxisStrength Numeric vector that indicates the strength of
+#' chemotaxis. Positive value for attraction; Negative for repelling effect. A
+#' value of 1 indicates that in case of a maximum gradient (concentration-weighted
+#' center in cell's scavenge area is at the edge of the area) the cell moves
+#' with its maximum speed (vmax) in the direction of the gradient. Default: 0.1
+#' @param chemotaxisHillKA Numeric vector for K_A value (unit: mM) in Hill
+#' equation in chemotactic metabolite sensing. Default: 0.1 mM
+#' @param chemotaxisHillCoef Numeric vector for the Hill coefficient (unitless)
+#' in metabolite sensing. Default: 1.2
 #' @param open.bounds Numeric value that is used to reset lower bounds of
 #' exchange reactions, which have a current lower bound of 0. See Details.
 #'
@@ -258,12 +265,21 @@ universe_polygon_preset <- function(universePolygon) {
 #' this package changes the value to it's negative counterpart if a positive value
 #' is provided.
 #'
+#' The default cell diameter (\eqn{(3 * 1 / (4 * pi))^(1/3) * 2}) is that of a
+#' sphere with 1 µm^3 volume.
+#'
+#' 'chemotaxisHillKA' and 'chemotaxisHillCoef' are metabolite sensing sensitivity
+#' parameters, which is modeled as a Hill equation. Default values correspond to
+#' numbers estimated by Sourjik and Berg (2001, PNAS) for \emph{Escherichia coli}.
+#'
 #' @return Object of class \link{growthSimulation}.
 #'
 #' @references
 #'  \url{https://bionumbers.hms.harvard.edu/bionumber.aspx?id=100008} \cr
 #'  \url{http://book.bionumbers.org/how-big-is-an-e-coli-cell-and-what-is-its-mass/} \cr
-#'  \url{https://bionumbers.hms.harvard.edu/bionumber.aspx?id=115616&ver=0&trm=speed+e.+coli&org=}
+#'  \url{https://bionumbers.hms.harvard.edu/bionumber.aspx?id=115616&ver=0&trm=speed+e.+coli&org=} \cr
+#'  Victor Sourjik and Howard C. Berg. (2001). Receptor sensitivity in bacterial
+#'  chemotaxis. *PNAS* **99**, 123-127.
 #'
 #' @examples
 #' # add two bacterial models (Eubacterium rectale, Bifidobacterium longum)
@@ -296,7 +312,7 @@ add_organism <- function(object,
                          distribution.method = "random_centroid",
                          distribution.center = NULL,
                          distribution.radius = NULL,
-                         cellDiameter = (3 * 1 / (4 * pi))^(1/3) * 2, # diameter of sphere with 1 µm^3
+                         cellDiameter = (3 * 1 / (4 * pi))^(1/3) * 2, # diameter of sphere with 1 µm^3 volume
                          cellMassInit = 0.28,
                          cellMassAtDivision = 0.56,
                          cellShape = "coccus",
@@ -304,7 +320,9 @@ add_organism <- function(object,
                          scavengeDist = cellDiameter*2.5,
                          rm.deadends = T,
                          chemotaxisCompound = NULL,
-                         chemotaxisStrength = NULL,
+                         chemotaxisStrength = 0.1,
+                         chemotaxisHillKA   = 0.1,
+                         chemotaxisHillCoef = 1.2,
                          open.bounds = NULL) {
   # sanity checks
   if(!is.growthSimulation(object))
@@ -315,12 +333,30 @@ add_organism <- function(object,
     stop("'ncells' should be a positive non-zero integer.")
 
 
-  if(is.null(chemotaxisCompound))
+  if(is.null(chemotaxisCompound)) {
     chemotaxisCompound <- character(0)
-  if(is.null(chemotaxisStrength))
     chemotaxisStrength <- double(0)
-  if(length(chemotaxisStrength) != length(chemotaxisCompound))
-    stop("Lengths of 'chemotaxisCompound' and 'chemotaxisStrength' should be equal.")
+    chemotaxisHillKA   <- double(0)
+    chemotaxisHillCoef <- double(0)
+  } else {
+    if(!(length(chemotaxisStrength) %in% c(1,length(chemotaxisCompound))))
+      stop("'chemotaxisStrength' should be the samle length as chemotaxisCompound or 1.")
+    if(!(length(chemotaxisHillKA) %in% c(1,length(chemotaxisCompound))))
+      stop("'chemotaxisHillKA' should be the samle length as chemotaxisCompound or 1.")
+    if(!(length(chemotaxisHillCoef) %in% c(1,length(chemotaxisCompound))))
+      stop("'chemotaxisHillCoef' should be the samle length as chemotaxisCompound or 1.")
+
+    if(any(chemotaxisHillKA <= 0) | any(chemotaxisHillCoef <= 0))
+      stop("'chemotaxisHillKA' and 'chemotaxisHillCoef' must be non-zero positive numbers.")
+
+    if(length(chemotaxisStrength) == 1)
+      chemotaxisStrength <- rep(chemotaxisStrength, length(chemotaxisCompound))
+    if(length(chemotaxisHillKA) == 1)
+      chemotaxisHillKA <- rep(chemotaxisHillKA, length(chemotaxisCompound))
+    if(length(chemotaxisHillCoef) == 1)
+      chemotaxisHillCoef <- rep(chemotaxisHillCoef, length(chemotaxisCompound))
+  }
+
 
   # init new organism object
   object@models[[name]] <- new("Organism",
@@ -333,6 +369,9 @@ add_organism <- function(object,
                                rm.deadends = rm.deadends,
                                chemotaxisCompound = chemotaxisCompound,
                                chemotaxisStrength = chemotaxisStrength,
+                               chemotaxisHillKA = chemotaxisHillKA,
+                               chemotaxisHillCoef = chemotaxisHillCoef,
+
                                open.bounds = open.bounds)
 
   #if not provided -> assign cell positions:

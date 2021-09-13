@@ -79,6 +79,52 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
       dir.create(object@recordDir)
   }
 
+  # save initial simulation status
+  if(object@n_rounds == 0) {
+    object@history[[1]] <- list()
+
+    # cell positions
+    object@history[[1]]$cells <- copy(object@cellDT)
+
+    # global metabolite concentrations (only variable)
+    ind_var <- !object@environ@conc.isConstant
+    dt_conc_tmp <- data.table(cpd.id = object@environ@compounds[ind_var],
+                              cpd.name = object@environ@compound.names[ind_var],
+                              global_concentration = apply(object@environ@concentrations[,ind_var],2,mean))
+    object@history[[1]]$global_compounds <- dt_conc_tmp
+
+    # specific compound concentrations per grids
+    if(!is.null(record) && (any(grepl("^compound_", record)) | ("compounds" %in% record))) {
+      COI <- record[grepl("^compound_", record)] # metabolites of interest
+      COI <- gsub("^compound_","",COI)
+      COI <- COI[COI %in% object@environ@compounds]
+      if("compounds" %in% record)
+        COI <- object@environ@compounds
+
+      if(length(COI) > 0) {
+        rec_file <- paste0(object@recordDir,"/cpdrec_",1,"_0.RDS")
+        k_tmp <- 1
+        while(file.exists(rec_file)) {
+          rec_file <- paste0(object@recordDir,"/cpdrec_",1,"_",k_tmp,".RDS")
+          k_tmp <- k_tmp + 1
+        }
+
+        COI.ind <- match(COI, object@environ@compounds)
+        COI.rec <- object@environ@concentrations[,COI.ind, drop = FALSE]
+        COI.rec <- data.table(round(COI.rec, digits = 7))
+
+        # save compound recording in recording file
+        saveRDS(COI.rec, file = rec_file, compress = T)
+
+        # save order of compounds
+        object@history[[1]]$compounds <- object@environ@compounds[COI.ind]
+
+        # save path to recording file
+        object@history[[1]]$compounds.record <- rec_file
+      }
+    }
+  }
+
   # devtools::check() does not recognize column names as variables and
   # throws warnings. This is prevented by assigned these names to NULL
   # https://github.com/Rdatatable/data.table/issues/850
@@ -119,7 +165,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
   gridDT[, "field" := 1:.N]
   setkeyv(gridDT, c("z","x","y"))
 
-  # get organims' scvenge radius
+  # get organims' scavenge radius
   get_scv_radius <- function(ctype) {
     unlist(lapply(ctype, function(x) object@models[[x]]@scavengeDist))
   }
@@ -225,15 +271,26 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
         ind <- which(res[["field.cpds"]] == icpd)
         delta_field_x <- object@environ@field.pts[res[["field.id"]]]$x - ic_x
         delta_field_y <- object@environ@field.pts[res[["field.id"]]]$y - ic_y
+        # normalize
+        delta_field_x <- delta_field_x / (res[["size"]]/2 + object@models[[object@cellDT[x, get("type")]]]@scavengeDist)
+        delta_field_y <- delta_field_y / (res[["size"]]/2 + object@models[[object@cellDT[x, get("type")]]]@scavengeDist)
 
         f_conc <- res[["field.conc"]][,ind]
         if(sum(f_conc) == 0)
           f_conc <- rep(1,length(f_conc))
         f_conc <- f_conc/sum(f_conc)
 
+        # calculate sensing activity/strength
+        centr_x    <- weighted.mean(delta_field_x, f_conc)
+        centr_y    <- weighted.mean(delta_field_y, f_conc)
+        Hill_ka    <- object@models[[object@cellDT[x, get("type")]]]@chemotaxisHillCoef[ind_ct]
+        Hill_coef  <- object@models[[object@cellDT[x, get("type")]]]@chemotaxisHillCoef[ind_ct]
 
-        res[["CT.x"]] <- res[["CT.x"]] + weighted.mean(delta_field_x, f_conc) * object@models[[object@cellDT[x, get("type")]]]@chemotaxisStrength[ind_ct]
-        res[["CT.y"]] <- res[["CT.y"]] + weighted.mean(delta_field_y, f_conc) * object@models[[object@cellDT[x, get("type")]]]@chemotaxisStrength[ind_ct]
+        # calculate sensing strength based on hill equation and gradient steepness
+        sensing_strength <- 1 / (1 + (Hill_ka / weighted.mean(f_conc, f_conc))^Hill_coef)
+
+        res[["CT.x"]] <- res[["CT.x"]] + centr_x * sensing_strength * object@models[[object@cellDT[x, get("type")]]]@chemotaxisStrength[ind_ct] * object@models[[object@cellDT[x, get("type")]]]@vmax * 60 * object@deltaTime * 60
+        res[["CT.y"]] <- res[["CT.y"]] + centr_y * sensing_strength * object@models[[object@cellDT[x, get("type")]]]@chemotaxisStrength[ind_ct] * object@models[[object@cellDT[x, get("type")]]]@vmax * 60 * object@deltaTime * 60
       }
 
       return(res)
@@ -331,6 +388,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
     CT.x <- unlist(lapply(cellFieldEnv, function(x) x$CT.x))
     CT.y <- unlist(lapply(cellFieldEnv, function(x) x$CT.y))
 
+    # add CT speed to existing speed
     object@cellDT$x.vel <- object@cellDT$x.vel + CT.x
     object@cellDT$y.vel <- object@cellDT$y.vel + CT.y
 
@@ -394,7 +452,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
     #saveRDS(sim_new, file ="sim_new.RDS")
 
     # - - - - - - - - - - - - - - - - - - - - - - - - #
-    # (5) Move & collide / re-organise cells in space #
+    # (5) Move & collide / reorganize cells in space  #
     # - - - - - - - - - - - - - - - - - - - - - - - - #
     if(verbose > 1)
       cat("... sliding and colliding cells\n", sep ='')
@@ -415,17 +473,17 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
     if(verbose > 1)
       cat("... recording simulation data\n", sep ='')
 
-    object@history[[simRound]] <- list()
+    object@history[[simRound+1]] <- list()
 
     # cell positions
-    object@history[[simRound]]$cells <- copy(object@cellDT)
+    object@history[[simRound+1]]$cells <- copy(object@cellDT)
 
     # global metabolite concentrations (only variable)
     ind_var <- !object@environ@conc.isConstant
     dt_conc_tmp <- data.table(cpd.id = object@environ@compounds[ind_var],
                               cpd.name = object@environ@compound.names[ind_var],
                               global_concentration = apply(object@environ@concentrations[,ind_var],2,mean))
-    object@history[[simRound]]$global_compounds <- dt_conc_tmp
+    object@history[[simRound+1]]$global_compounds <- dt_conc_tmp
 
 
     # Cell-individual exchange fluxes in fmol
@@ -434,7 +492,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
                  exflux   = icell$ex.fluxes)
     })
     cell.ex.fluxes <- rbindlist(cell.ex.fluxes, idcol = "cell")
-    object@history[[simRound]]$cell.exchanges <- cell.ex.fluxes
+    object@history[[simRound+1]]$cell.exchanges <- cell.ex.fluxes
 
     # specific compound concentrations per grids
     if(!is.null(record) && (any(grepl("^compound_", record)) | ("compounds" %in% record))) {
@@ -445,11 +503,11 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
         COI <- object@environ@compounds
 
       if(length(COI) > 0) {
-        rec_file <- paste0(object@recordDir,"/cpdrec_",simRound,"_0.RDS")
+        rec_file <- paste0(object@recordDir,"/cpdrec_",simRound+1,"_0.RDS")
         k_tmp <- 1
         while(file.exists(rec_file)) {
-          rec_file <- paste0(object@recordDir,"/cpdrec_",simRound,"_",k_tmp,".RDS")
-          k <- k + 1
+          rec_file <- paste0(object@recordDir,"/cpdrec_",simRound+1,"_",k_tmp,".RDS")
+          k_tmp <- k_tmp + 1
         }
 
         COI.ind <- match(COI, object@environ@compounds)
@@ -457,18 +515,14 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
         COI.rec <- data.table(round(COI.rec, digits = 7))
 
         # save compound recording in recording file
-        # fwrite(COI.rec, file = object@cpdRecordFile, append = TRUE,
-        #        col.names = FALSE, quote = FALSE)
         saveRDS(COI.rec, file = rec_file, compress = T)
 
         # save order of compounds
-        object@history[[simRound]]$compounds <- object@environ@compounds[COI.ind]
+        object@history[[simRound+1]]$compounds <- object@environ@compounds[COI.ind]
 
         # save path to recording file
-        object@history[[simRound]]$compounds.record <- rec_file
+        object@history[[simRound+1]]$compounds.record <- rec_file
       }
-
-      # TODO: Record individual fluxes
     }
 
     # - - - - - - - - - - - - - - - - - - - - - - - #

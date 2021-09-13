@@ -1,7 +1,7 @@
 Package: EcoAgents
 Type: Package
 Title: Agent-based modelling of microbial communities in time and continuous µ-meter-scale space
-Version: 0.1.5
+Version: 0.1.6
 Author: Silvio Waschina
 Maintainer: Silvio Waschina <s.waschina@nutrinf.uni-kiel.de>
 Description: Cell agent-based modelling with FBA metabolic flux predictions 
