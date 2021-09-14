@@ -245,7 +245,7 @@ universe_polygon_preset <- function(universePolygon) {
 #' chemotaxis. Positive value for attraction; Negative for repelling effect. A
 #' value of 1 indicates that in case of a maximum gradient (concentration-weighted
 #' center in cell's scavenge area is at the edge of the area) the cell moves
-#' with its maximum speed (vmax) in the direction of the gradient. Default: 0.1
+#' with its maximum speed (vmax) in the direction of the gradient. Default: 0.01
 #' @param chemotaxisHillKA Numeric vector for K_A value (unit: mM) in Hill
 #' equation in chemotactic metabolite sensing. Default: 0.1 mM
 #' @param chemotaxisHillCoef Numeric vector for the Hill coefficient (unitless)
@@ -279,16 +279,19 @@ universe_polygon_preset <- function(universePolygon) {
 #'  \url{http://book.bionumbers.org/how-big-is-an-e-coli-cell-and-what-is-its-mass/} \cr
 #'  \url{https://bionumbers.hms.harvard.edu/bionumber.aspx?id=115616&ver=0&trm=speed+e.+coli&org=} \cr
 #'  Victor Sourjik and Howard C. Berg. (2001). Receptor sensitivity in bacterial
-#'  chemotaxis. *PNAS* **99**, 123-127.
+#'  chemotaxis. \emph{PNAS} \strong{99}, 123-127.
 #'
 #' @examples
 #' # add two bacterial models (Eubacterium rectale, Bifidobacterium longum)
 #' # to the environment; each with 15 initial cells
 #' models <- list()
-#' models[['eure']] <- readRDS(system.file("extdata", "eure.RDS", package="EcoAgents"))
-#' models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS", package="EcoAgents"))
+#' models[['eure']] <- readRDS(system.file("extdata", "eure.RDS",
+#'                             package="EcoAgents"))
+#' models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS",
+#'                             package="EcoAgents"))
 #'
-#' sim <- init_simulation(cbind(c(-150, -150, 150, 150), c(-150, 150, 150, -150)),
+#' sim <- init_simulation(cbind(c(-150, -150, 150, 150),
+#'                              c(-150, 150, 150, -150)),
 #'                        gridFieldSize = 1.75, gridFieldLayers = 5)
 #'
 #' sim <- add_organism(sim, model = models[["eure"]], name = "E. rectale",
@@ -320,7 +323,7 @@ add_organism <- function(object,
                          scavengeDist = cellDiameter*2.5,
                          rm.deadends = T,
                          chemotaxisCompound = NULL,
-                         chemotaxisStrength = 0.1,
+                         chemotaxisStrength = 0.01,
                          chemotaxisHillKA   = 0.1,
                          chemotaxisHillCoef = 1.2,
                          open.bounds = NULL) {

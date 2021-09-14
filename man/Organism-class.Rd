@@ -29,8 +29,16 @@ a cell can scavenge nutrients from its surrounding. Unit: µm}
 \item{\code{chemotaxisCompound}}{Character vector with the compound IDs that influence
 the cells chemotaxis behavior.}
 
-\item{\code{chemotaxisStrength}}{Numeric vector indicating the strength of chemotaxis.
-Positive: attracting; Negative: Repelling}
+\item{\code{chemotaxisStrength}}{Numeric vector that indicates the strength of
+chemotaxis. Positive value for attraction; Negative for repelling effect. A
+value of 1 indicates that in case of a maximum gradient (concentration-weighted
+center in cell's scavenge area is at the edge of the area) the cell moves
+with its maximum speed (vmax) in the direction of the gradient.}
+
+\item{\code{chemotaxisHillKA}}{Numeric vector for K_A value in Hill equation in
+chemotactic metabolite sensing. Unit: mM}
+
+\item{\code{chemotaxisHillCoef}}{Numeric vector for the Hill coefficient. Unitless}
 
 \item{\code{mod}}{Object of S4-class \link[sybil]{modelorg} for the organisms metabolic
 network model.}

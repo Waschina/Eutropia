@@ -276,6 +276,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
         delta_field_y <- delta_field_y / (res[["size"]]/2 + object@models[[object@cellDT[x, get("type")]]]@scavengeDist)
 
         f_conc <- res[["field.conc"]][,ind]
+        f_conc_orig <- f_conc
         if(sum(f_conc) == 0)
           f_conc <- rep(1,length(f_conc))
         f_conc <- f_conc/sum(f_conc)
@@ -283,11 +284,11 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
         # calculate sensing activity/strength
         centr_x    <- weighted.mean(delta_field_x, f_conc)
         centr_y    <- weighted.mean(delta_field_y, f_conc)
-        Hill_ka    <- object@models[[object@cellDT[x, get("type")]]]@chemotaxisHillCoef[ind_ct]
+        Hill_ka    <- object@models[[object@cellDT[x, get("type")]]]@chemotaxisHillKA[ind_ct]
         Hill_coef  <- object@models[[object@cellDT[x, get("type")]]]@chemotaxisHillCoef[ind_ct]
 
         # calculate sensing strength based on hill equation and gradient steepness
-        sensing_strength <- 1 / (1 + (Hill_ka / weighted.mean(f_conc, f_conc))^Hill_coef)
+        sensing_strength <- 1 / (1 + (Hill_ka / weighted.mean(f_conc_orig, f_conc))^Hill_coef)
 
         res[["CT.x"]] <- res[["CT.x"]] + centr_x * sensing_strength * object@models[[object@cellDT[x, get("type")]]]@chemotaxisStrength[ind_ct] * object@models[[object@cellDT[x, get("type")]]]@vmax * 60 * object@deltaTime * 60
         res[["CT.y"]] <- res[["CT.y"]] + centr_y * sensing_strength * object@models[[object@cellDT[x, get("type")]]]@chemotaxisStrength[ind_ct] * object@models[[object@cellDT[x, get("type")]]]@vmax * 60 * object@deltaTime * 60
