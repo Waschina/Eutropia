@@ -322,6 +322,9 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
     object@environ@concentrations[I[,1:2]] <- object@environ@concentrations[I[,1:2]] + I[,3]
     object@environ@concentrations[I[,1:2]] <- ifelse(object@environ@concentrations[I[,1:2]] < 1e-12, 0, object@environ@concentrations[I[,1:2]])
 
+    # extract reduced costs
+    object@rcdt <- rbindlist(lapply(agFBA_results, function(x) x$rc), idcol = "cell")
+
     # exoenzymes
     I.exec <- rbindlist(lapply(agFBA_results, function(x) x$I.exec.pd))
     I.exec <- I.exec[, list("concChange" = sum(get("concChange"))), by = c("field.id", "concMatInd")]
@@ -639,6 +642,16 @@ agentFBA_ex <- function(x) {
   mu <- sol.fba$obj * x$deltaTime
   stat <- sol.fba$stat
 
+  # extract reduced costs of exchange reactions
+  rc <- getRedCosts(fork_mods[[x$type]]@problem)
+  rc <- data.table(type      = x$type,
+                   exrxn     = x$model@mod@react_id[updatedEX$ex.react.ind],
+                   exname    = x$model@mod@react_name[updatedEX$ex.react.ind],
+                   flux      = sol.fba$fluxes[updatedEX$ex.react.ind],
+                   red.costs = rc[updatedEX$ex.react.ind],
+                   lb.org    = x$model@mod@lowbnd[updatedEX$ex.react.ind],
+                   lb.env    = updatedEX$ex.react.lb)
+
   # restore former bounds
   ccbnds <- changeColsBnds(problem(fork_mods[[x$type]]), updatedEX$ex.react.ind,
                            lb = x$model@mod@lowbnd[updatedEX$ex.react.ind],
@@ -763,7 +776,8 @@ agentFBA_ex <- function(x) {
               accmat    = accmat,
               I.up      = I.up,
               I.pd      = I.pd,
-              I.exec.pd = I.exec.pd
+              I.exec.pd = I.exec.pd,
+              rc        = rc
   ))
 }
 

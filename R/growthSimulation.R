@@ -29,6 +29,9 @@
 #' are recorded if turned on in \link{run_simulation}. Files in this directory
 #' are meant as internal resource and not for direct analysis outside of this
 #' package.
+#' @slot rcdt data.table that stores the last reduced cost values of each cell's
+#' exchange reactions. This information could indicate growth limiting
+#' compounds.
 setClass("growthSimulation",
 
          slots = c(
@@ -43,6 +46,7 @@ setClass("growthSimulation",
 
            # ind. cell info
            cellDT = "data.table",
+           rcdt   = "data.table",
 
            # Environment slots
            universePolygon = "matrix",
@@ -74,8 +78,8 @@ is.growthSimulation <- function(x) inherits(x, "growthSimulation")
 #' of field elements.
 #' @param deltaTime double specifying the length of each time step for the
 #' simulation in hours.
-#' @param rMotion double. Maximum x- and y distance a cell can travel by means
-#' of random motion per minute Default: 0.1 µm
+#' @param rMotion double. Maximum distance a cell can travel by means of
+#' Brownian motion per minute Default: 0.1 µm
 #'
 #' @return Object of class \link{growthSimulation}.
 #'
@@ -85,7 +89,7 @@ is.growthSimulation <- function(x) inherits(x, "growthSimulation")
 #'   \item{"Petri_<R>"}{ is a Petri dish-like object (actually a 99-corner polygon),
 #'   where `<R>` should be replaced with an integer, indicating the radius of the
 #'   dish in µm.}
-#'   \item{"rectangle_<X>_<Y>"}{ is a, *surprise*, rectangle. `<X>` and `<Y>` should be
+#'   \item{"Rectangle_<X>_<Y>"}{ is a, *surprise*, rectangle. `<X>` and `<Y>` should be
 #'   integers specifying the width and height in µm, respectively.}
 #'   \item{"Kiel_<L>"}{ let microbes thrive within Kiel's city limits. Use `<L>`
 #'   to specify the latitude dimension in µm (integer). The longitude is automatically
@@ -133,6 +137,7 @@ init_simulation <- function(universePolygon,
                        mass = numeric(),
                        size = numeric(),
                        parent = numeric())
+  rcdt   <- data.table()
 
   # init actual growth simulation object
   simobj <- new("growthSimulation",
@@ -142,6 +147,7 @@ init_simulation <- function(universePolygon,
                 models = list(),
                 history = list(),
                 cellDT = cellDT,
+                rcdt = rcdt,
                 universePolygon = universePolygon,
                 environ = environ,
                 recordDir = NA_character_
@@ -155,8 +161,8 @@ universe_polygon_preset <- function(universePolygon) {
   universePolygon <- universePolygon[1]
 
   # Petri dish (99 corner polygon)
-  if(grepl("^Petri_[0-9]+$",universePolygon)) {
-    p_r <- as.numeric(sub("^Petri_(\\S+)$", "\\1", universePolygon))
+  if(grepl("^[P|p]etri_[0-9]+$",universePolygon)) {
+    p_r <- as.numeric(sub("^[P|p]etri_(\\S+)$", "\\1", universePolygon))
 
     if(p_r < 2.5)
       stop("Petri dish radius too small. (min 2.5 µm)")
@@ -172,9 +178,9 @@ universe_polygon_preset <- function(universePolygon) {
   }
 
   # Square dish (99 corner polygon)
-  if(grepl("^rectangle_[0-9]+_[0-9]+$",universePolygon)) {
-    x <- as.numeric(sub("^rectangle_(\\S+)_[0-9]+$", "\\1", universePolygon)) / 2
-    y <- as.numeric(sub("^rectangle_[0-9]+_(\\S+)$", "\\1", universePolygon)) / 2
+  if(grepl("^[R|r]ectangle_[0-9]+_[0-9]+$",universePolygon)) {
+    x <- as.numeric(sub("^[R|r]ectangle_(\\S+)_[0-9]+$", "\\1", universePolygon)) / 2
+    y <- as.numeric(sub("^[R|r]ectangle_[0-9]+_(\\S+)$", "\\1", universePolygon)) / 2
 
     if(x < 5 | y < 5)
       stop("Rectangle dimesions too small. (x,y >= 5 µm)")
@@ -186,12 +192,12 @@ universe_polygon_preset <- function(universePolygon) {
   }
 
   # Kiel city limits (proof of principle)
-  if(grepl("^Kiel_[0-9]+$",universePolygon)) {
+  if(grepl("^[K|k]iel_[0-9]+$",universePolygon)) {
     Kiel <- as.matrix(fread(system.file("extdata","kiel.csv", package = "EcoAgents")))
     Kiel_dim <- max(Kiel[,1])
     Kiel <- Kiel / Kiel_dim
 
-    x <- as.numeric(sub("^Kiel_(\\S+)$", "\\1", universePolygon)) / 2
+    x <- as.numeric(sub("^[K|k]iel_(\\S+)$", "\\1", universePolygon)) / 2
     Kiel <- Kiel * x/2
 
     if(x < 10)
@@ -201,7 +207,7 @@ universe_polygon_preset <- function(universePolygon) {
   }
 
   stop(paste0("The polygon preset \"",universePolygon,
-              "\" does not exist / is not yet supportet."))
+              "\" does not exist / is not yet supported."))
 }
 
 

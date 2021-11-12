@@ -9,7 +9,10 @@ plot_cells(
   xlim = NULL,
   ylim = NULL,
   iter = NULL,
-  scalebar.color = "white"
+  scalebar.color = "white",
+  incl.timestamp = TRUE,
+  legend.position = "bottom",
+  plot.title = NULL
 )
 }
 \arguments{
@@ -22,6 +25,15 @@ plot_cells(
 \item{iter}{Positive integer number of the simulation step/iteration to plot the cell distribution. If past simulation are displayed, the cell postitions needed to be recorded when running the simulation before (see \code{link{run.simulation}}). If NULL, current distribution is displayed.}
 
 \item{scalebar.color}{Color of the scale bar and its annotation. Default: "white".}
+
+\item{incl.timestamp}{Boolean indicating whether a timestamp should be
+included in the plot. Default: TRUE}
+
+\item{legend.position}{The position of legends ("none", "left", "right",
+"bottom", "top", or two-element numeric vector), as handled in
+\link[ggplot2]{ggplot2}. Default: "bottom"}
+
+\item{plot.title}{An optional title written on top of the plot.}
 }
 \value{
 A ggplot object.

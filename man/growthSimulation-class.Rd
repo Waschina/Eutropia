@@ -41,5 +41,9 @@ environment mesh layout, compounds, and their concentrations.}
 are recorded if turned on in \link{run_simulation}. Files in this directory
 are meant as internal resource and not for direct analysis outside of this
 package.}
+
+\item{\code{rcdt}}{data.table that stores the last reduced cost values of each cell's
+exchange reactions. This information could indicate growth limiting
+compounds.}
 }}
 

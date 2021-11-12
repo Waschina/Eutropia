@@ -14,7 +14,9 @@ plot_environment(
   scalebar.color = "white",
   layer = 0,
   gradient.limits = NULL,
-  gradient.option = "viridis"
+  gradient.option = "viridis",
+  incl.timestamp = TRUE,
+  legend.position = "right"
 )
 }
 \arguments{
@@ -48,6 +50,13 @@ concentration range that is spanned by the color gradient.}
 \item{gradient.option}{Character string indicating the colormap to be used
 for visualizing metabolite concentrations. Please refer to \link[ggplot2]{scale_colour_viridis_d}
 so see possible options.}
+
+\item{incl.timestamp}{Boolean indicating whether a timestamp should be
+included in the plot. Default: TRUE}
+
+\item{legend.position}{The position of legends ("none", "left", "right",
+"bottom", "top", or two-element numeric vector), as handled in
+\link[ggplot2]{ggplot2}. Default: "right"}
 }
 \value{
 A \link{ggplot}

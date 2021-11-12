@@ -27,8 +27,8 @@ of field elements.}
 \item{deltaTime}{double specifying the length of each time step for the
 simulation in hours.}
 
-\item{rMotion}{double. Maximum x- and y distance a cell can travel by means
-of random motion per minute Default: 0.1 µm}
+\item{rMotion}{double. Maximum distance a cell can travel by means of
+Brownian motion per minute Default: 0.1 µm}
 }
 \value{
 Object of class \link{growthSimulation}.
@@ -42,7 +42,7 @@ Available universe polygon presets:
   \item{"Petri_<R>"}{ is a Petri dish-like object (actually a 99-corner polygon),
   where `<R>` should be replaced with an integer, indicating the radius of the
   dish in µm.}
-  \item{"rectangle_<X>_<Y>"}{ is a, *surprise*, rectangle. `<X>` and `<Y>` should be
+  \item{"Rectangle_<X>_<Y>"}{ is a, *surprise*, rectangle. `<X>` and `<Y>` should be
   integers specifying the width and height in µm, respectively.}
   \item{"Kiel_<L>"}{ let microbes thrive within Kiel's city limits. Use `<L>`
   to specify the latitude dimension in µm (integer). The longitude is automatically

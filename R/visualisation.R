@@ -10,6 +10,12 @@
 #' @param ylim Numeric vector of length 2, specifying the y-range to be displayed.
 #' @param iter Positive integer number of the simulation step/iteration to plot the cell distribution. If past simulation are displayed, the cell postitions needed to be recorded when running the simulation before (see \code{link{run.simulation}}). If NULL, current distribution is displayed.
 #' @param scalebar.color Color of the scale bar and its annotation. Default: "white".
+#' @param incl.timestamp Boolean indicating whether a timestamp should be
+#' included in the plot. Default: TRUE
+#' @param legend.position The position of legends ("none", "left", "right",
+#' "bottom", "top", or two-element numeric vector), as handled in
+#' \link[ggplot2]{ggplot2}. Default: "bottom"
+#' @param plot.title An optional title written on top of the plot.
 #'
 #' @return A ggplot object.
 #'
@@ -19,7 +25,8 @@
 #'
 #' @export
 plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
-                       scalebar.color = "white") {
+                       scalebar.color = "white", incl.timestamp = TRUE,
+                       legend.position = "bottom", plot.title = NULL) {
   if(object@n_rounds == 0 & !is.null(iter)) {
     if(iter != 0)
       warning("Simulation did not run yet. Showing initial simulation status.")
@@ -92,7 +99,8 @@ plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
              x = xlim[2]-bar_wd/2-x_exp_fac,
              y = ylim[1]+y_exp_fac,
              label = paste0(bar_wd," \u00B5m"),
-             color = scalebar.color, hjust = 0.5, vjust = -1, size = 2.5)
+             color = scalebar.color, hjust = 0.5, vjust = -1, size = 2.5) +
+    ggtitle(plot.title)
 
   # use nicer brewer colors if here are not to many distinct cell types
   # Otherwise: using ggplot defaults
@@ -104,6 +112,7 @@ plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
     scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
     theme_bw() +
     theme(plot.background = element_blank(),
+          plot.title = element_text(hjust = 0.5),
           axis.line.x.top = element_line(color = "white", size = 1.5, lineend = "round"),
           axis.line.x.bottom = element_line(color = "white", size = 1.5, lineend = "round"),
           axis.line.y.left = element_line(color = "white", size = 1.5, lineend = "round"),
@@ -119,13 +128,15 @@ plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
           legend.text = element_text(color = "black", face = "italic"),
           legend.box.background = element_blank(),
           legend.key = element_blank(),
-          legend.position = "bottom", legend.direction="vertical"
+          legend.position = legend.position, legend.direction="vertical"
     ) +
     guides(color = guide_legend(title = "Organism",
                                 override.aes = list(alpha = 1, size = 5)),
-           fill  = guide_legend(title = "Organism")) +
-    labs(subtitle = round_hms(hms(hours = object@deltaTime * i_round),
-                              digits = 0))
+           fill  = guide_legend(title = "Organism"))
+
+  if(incl.timestamp)
+    p <- p + labs(subtitle = round_hms(hms(hours = object@deltaTime * i_round),
+                                       digits = 0))
 
   return(p)
 
@@ -161,6 +172,11 @@ plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
 #' @param gradient.option Character string indicating the colormap to be used
 #' for visualizing metabolite concentrations. Please refer to \link[ggplot2]{scale_colour_viridis_d}
 #' so see possible options.
+#' @param incl.timestamp Boolean indicating whether a timestamp should be
+#' included in the plot. Default: TRUE
+#' @param legend.position The position of legends ("none", "left", "right",
+#' "bottom", "top", or two-element numeric vector), as handled in
+#' \link[ggplot2]{ggplot2}. Default: "right"
 #'
 #' @return A \link{ggplot}
 #'
@@ -171,7 +187,9 @@ plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
 plot_environment <- function(object, compounds, compound.names = NULL,
                              xlim = NULL, ylim = NULL, iter = NULL,
                              scalebar.color = "white", layer = 0,
-                             gradient.limits = NULL, gradient.option = "viridis") {
+                             gradient.limits = NULL, gradient.option = "viridis",
+                             incl.timestamp = TRUE,
+                             legend.position = "right") {
   if(object@n_rounds == 0 & !is.null(iter)) {
     if(iter != 0)
       warning("Simulation did not run yet. Showing initial simulation status.")
@@ -298,7 +316,7 @@ plot_environment <- function(object, compounds, compound.names = NULL,
     scale_color_viridis_c(limits = gradient.limits, option = gradient.option) +
     facet_wrap("Compound.name") +
     scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
-    theme(legend.position = "right",
+    theme(legend.position = legend.position,
           axis.line.x.top = element_line(color = "white", size = 1.5, lineend = "round"),
           axis.line.x.bottom = element_line(color = "white", size = 1.5, lineend = "round"),
           axis.line.y.left = element_line(color = "white", size = 1.5, lineend = "round"),
@@ -306,9 +324,11 @@ plot_environment <- function(object, compounds, compound.names = NULL,
           panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank(),
           panel.background = element_blank(), axis.line = element_blank(),
           axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank(),
-          strip.background = element_blank(), strip.text = element_text(face = "bold", color = "black")) +
-    labs(caption = round_hms(hms(hours = object@deltaTime * i_round),
-                             digits = 0))
+          strip.background = element_blank(), strip.text = element_text(face = "bold", color = "black"))
+
+    if(incl.timestamp)
+      p <- p + labs(subtitle = round_hms(hms(hours = object@deltaTime * i_round),
+                                         digits = 0))
 
 
   return(p)
@@ -345,6 +365,11 @@ plot_environment <- function(object, compounds, compound.names = NULL,
 #' @param gradient.option Character string indicating the colormap to be used
 #' for visualizing exoenzyme concentrations. Please refer to \link[ggplot2]{scale_colour_viridis_d}
 #' so see possible options.
+#' @param incl.timestamp Boolean indicating whether a timestamp should be
+#' included in the plot. Default: TRUE
+#' @param legend.position The position of legends ("none", "left", "right",
+#' "bottom", "top", or two-element numeric vector), as handled in
+#' \link[ggplot2]{ggplot2}. Default: "right"
 #'
 #' @return A \link{ggplot}
 #'
@@ -354,7 +379,9 @@ plot_environment <- function(object, compounds, compound.names = NULL,
 plot_environment_exoenzymes <- function(object, exoenzymes, exoenzyme.names = NULL,
                                         xlim = NULL, ylim = NULL, iter = NULL,
                                         scalebar.color = "white", layer = 0,
-                                        gradient.limits = NULL, gradient.option = "viridis") {
+                                        gradient.limits = NULL, gradient.option = "viridis",
+                                        incl.timestamp = TRUE,
+                                        legend.position = "right") {
   if(object@n_rounds == 0 & !is.null(iter)) {
     if(iter != 0)
       warning("Simulation did not run yet. Showing initial simulation status.")
@@ -372,6 +399,8 @@ plot_environment_exoenzymes <- function(object, exoenzymes, exoenzyme.names = NU
 
     warning("Not all selected exoenzymes are part of the environment/simulation. Continuing with the ones that are...")
   }
+
+  i_round <- object@n_rounds
 
   # If no limits are defined use polygon universe limits
   if(is.null(xlim)) {
@@ -455,7 +484,7 @@ plot_environment_exoenzymes <- function(object, exoenzymes, exoenzyme.names = NU
     scale_color_viridis_c(limits = gradient.limits, option = gradient.option) +
     facet_wrap("Exoenzyme.name") +
     scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
-    theme(legend.position = "right",
+    theme(legend.position = legend.position,
           axis.line.x.top = element_line(color = "white", size = 1.5, lineend = "round"),
           axis.line.x.bottom = element_line(color = "white", size = 1.5, lineend = "round"),
           axis.line.y.left = element_line(color = "white", size = 1.5, lineend = "round"),
@@ -464,6 +493,10 @@ plot_environment_exoenzymes <- function(object, exoenzymes, exoenzyme.names = NU
           panel.background = element_blank(), axis.line = element_blank(),
           axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank(),
           strip.background = element_blank(), strip.text = element_text(face = "bold", color = "black"))
+
+  if(incl.timestamp)
+    p <- p + labs(subtitle = round_hms(hms(hours = object@deltaTime * i_round),
+                                       digits = 0))
 
 
   return(p)
