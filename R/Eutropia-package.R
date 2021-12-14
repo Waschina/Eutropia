@@ -4,7 +4,6 @@
 ## usethis namespace: end
 NULL
 
-
 .onAttach <- function(libname, pkgname) {
   packageStartupMessage("Welcome to Eutropia.")
 }

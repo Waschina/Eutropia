@@ -20,7 +20,8 @@ Encoding: UTF-8
 LazyData: true
 Suggests: 
     knitr,
-    rmarkdown
+    rmarkdown,
+    cplexAPI
 VignetteBuilder: knitr
 RoxygenNote: 7.1.2
 LinkingTo: 
