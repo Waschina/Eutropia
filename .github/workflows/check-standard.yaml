@@ -41,7 +41,9 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v1
         with:
-          extra-packages: rcmdcheck, cplexAPI=?ignore-after-r=4.0.0
+          extra-packages: rcmdcheck
+        env:
+          _R_CHECK_FORCE_SUGGESTS_: false
 
       - uses: r-lib/actions/check-r-package@v1
         env:
