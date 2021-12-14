@@ -292,9 +292,15 @@ diffuse_compounds <- function(object, deltaTime, cl, n.cores) {
     if(length(ind_variable) / n.chunks < 3)
       n.chunks <- ceiling(n.chunks/2)
 
-    ind_var_chunks <- split(ind_variable,
-                            cut(seq_along(ind_variable),
-                                n.chunks, labels = F))
+    # split the metabolites, which are subject to diffusion in (nearly) equally
+    # sized chunks, so chunks can be computed in parallel.
+    if(n.chunks > 1) {
+      ind_var_chunks <- split(ind_variable,
+                              cut(seq_along(ind_variable),
+                                  n.chunks, labels = F))
+    } else {
+      ind_var_chunks <- list(`1` = ind_variable)
+    }
 
     # VIA RccpArmadillo
     conc.list.tmp <- lapply(ind_var_chunks, function(x) {

@@ -1,5 +1,7 @@
 ---
 title: "Cross-feeding of two gastrointestinal bacteria"
+author: "Silvio Waschina"
+date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Crossfeeding}
@@ -69,10 +71,10 @@ sim <- add_compounds(sim,
 
 ## The simulation
 
-We are all set to run our first simulation. It will run for 50 iterations (= 500 minutes simulated time). The simulation may take between 5 to 10 minutes to finish.
+We are all set to run our first simulation. It will run for 50 iterations (= 500 minutes simulated time). The simulation may take around 4 minutes 30 seconds to finish, because of the option `lim_time = 4.5`, while the last iteration is allowed to finish even if the time limit is exceeded. You can of course increase the time limit. The number of iterations depends on the systems performance.
 
 ```{r}
-sim <- run_simulation(sim, niter = 50, verbose = 1)
+sim <- run_simulation(sim, niter = 50, verbose = 1, lim_time = 4.5)
 ```
 
 ## Analyse the environment after the simulation
@@ -114,7 +116,7 @@ summary_exchanges(sim)
 
 In addition, the same information can be retrieved for earlier iterations in the simulation.
 ```{r}
-summary_exchanges(sim, iter = 25)
+summary_exchanges(sim, iter = 10)
 ```
 
 The results should clearly show that, while acetate is produced by *B. longum*, it is consumed by *E. rectale*.
