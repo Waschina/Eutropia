@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(EcoAgents)
+library(Eutropia)
 ```
 
 ## Background
@@ -35,8 +35,8 @@ Next, we will read the models for both organisms and place 15 cells each in the 
 ```{r}
 # add organisms (15 cells of each as 'starter culture')
 models <- list()
-models[['eure']] <- readRDS(system.file("extdata", "eure.RDS", package="EcoAgents"))
-models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS", package="EcoAgents"))
+models[['eure']] <- readRDS(system.file("extdata", "eure.RDS", package="Eutropia"))
+models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS", package="Eutropia"))
 
 sim <- add_organism(sim, model = models[['eure']], name = "E. rectale",
                     ncells = 15, distribution.radius = 25,
@@ -57,7 +57,7 @@ Now we have an simulation object with cells. What so far is missing are nutrient
 
 ```{r}
 # Load a medium table
-dt_medium <- fread(system.file("extdata", "medium.csv", package="EcoAgents"))
+dt_medium <- fread(system.file("extdata", "medium.csv", package="Eutropia"))
 
 # adding compounds
 sim <- add_compounds(sim,

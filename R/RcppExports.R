@@ -2,10 +2,10 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 diffChange <- function(adjmat, nneighbors, conc, niter) {
-    .Call(`_EcoAgents_diffChange`, adjmat, nneighbors, conc, niter)
+    .Call(`_Eutropia_diffChange`, adjmat, nneighbors, conc, niter)
 }
 
 diffChangeVec <- function(adjmat, nneighbors, conc, niter) {
-    .Call(`_EcoAgents_diffChangeVec`, adjmat, nneighbors, conc, niter)
+    .Call(`_Eutropia_diffChangeVec`, adjmat, nneighbors, conc, niter)
 }
 

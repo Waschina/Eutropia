@@ -13,7 +13,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 
 // diffChange
 arma::mat diffChange(arma::mat adjmat, arma::mat nneighbors, arma::mat conc, arma::vec niter);
-RcppExport SEXP _EcoAgents_diffChange(SEXP adjmatSEXP, SEXP nneighborsSEXP, SEXP concSEXP, SEXP niterSEXP) {
+RcppExport SEXP _Eutropia_diffChange(SEXP adjmatSEXP, SEXP nneighborsSEXP, SEXP concSEXP, SEXP niterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -27,7 +27,7 @@ END_RCPP
 }
 // diffChangeVec
 arma::mat diffChangeVec(arma::mat adjmat, arma::mat nneighbors, arma::Row<double> conc, int niter);
-RcppExport SEXP _EcoAgents_diffChangeVec(SEXP adjmatSEXP, SEXP nneighborsSEXP, SEXP concSEXP, SEXP niterSEXP) {
+RcppExport SEXP _Eutropia_diffChangeVec(SEXP adjmatSEXP, SEXP nneighborsSEXP, SEXP concSEXP, SEXP niterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -41,12 +41,12 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_EcoAgents_diffChange", (DL_FUNC) &_EcoAgents_diffChange, 4},
-    {"_EcoAgents_diffChangeVec", (DL_FUNC) &_EcoAgents_diffChangeVec, 4},
+    {"_Eutropia_diffChange", (DL_FUNC) &_Eutropia_diffChange, 4},
+    {"_Eutropia_diffChangeVec", (DL_FUNC) &_Eutropia_diffChangeVec, 4},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_EcoAgents(DllInfo *dll) {
+RcppExport void R_init_Eutropia(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

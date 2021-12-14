@@ -118,9 +118,9 @@ numbers estimated by Sourjik and Berg (2001, PNAS) for \emph{Escherichia coli}.
 # to the environment; each with 15 initial cells
 models <- list()
 models[['eure']] <- readRDS(system.file("extdata", "eure.RDS",
-                            package="EcoAgents"))
+                            package="Eutropia"))
 models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS",
-                            package="EcoAgents"))
+                            package="Eutropia"))
 
 sim <- init_simulation(cbind(c(-150, -150, 150, 150),
                              c(-150, 150, 150, -150)),
