@@ -19,7 +19,7 @@ rhombic dodecahedron centers points.}
 \item{\code{compound.names}}{Character vector with compound names}
 
 \item{\code{compound.D}}{Numeric vector of the diffusion coefficient values for each
-compound. Unit: µm^2/s}
+compound. Unit: \eqn{\mu}m^2/s}
 
 \item{\code{concentrations}}{(n x m) numeric matrix with n columns representing compounds
 and m grid field (field.pts). Units of matrix entries: mM}
@@ -33,10 +33,10 @@ dodecahedra fields are in the environment representation.}
 \item{\code{nfields}}{Integer indicating the number of fields in the environment
 representation.}
 
-\item{\code{fieldSize}}{Size of each rhomic dodecahedron in µm as the distance between
+\item{\code{fieldSize}}{Size of each rhomic dodecahedron in \eqn{\mu}m as the distance between
 opposite faces.}
 
-\item{\code{fieldVol}}{Volume of each field. Unit: µm^3}
+\item{\code{fieldVol}}{Volume of each field. Unit: \eqn{\mu}m^3}
 
 \item{\code{mat.in}}{A two column numeric matrix as a representation of the grid environment
 as a directed graph. First column (From) and second column (To) are denoting

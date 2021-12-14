@@ -12,7 +12,7 @@
 #' @slot compounds Character vector with compound IDs
 #' @slot compound.names Character vector with compound names
 #' @slot compound.D Numeric vector of the diffusion coefficient values for each
-#' compound. Unit: µm^2/s
+#' compound. Unit: \eqn{\mu}m^2/s
 #' @slot concentrations (n x m) numeric matrix with n columns representing compounds
 #' and m grid field (field.pts). Units of matrix entries: mM
 #' @slot conc.isConstant Logical vector indicating if the respective compound is
@@ -21,9 +21,9 @@
 #' dodecahedra fields are in the environment representation.
 #' @slot nfields Integer indicating the number of fields in the environment
 #' representation.
-#' @slot fieldSize Size of each rhomic dodecahedron in µm as the distance between
+#' @slot fieldSize Size of each rhomic dodecahedron in \eqn{\mu}m as the distance between
 #' opposite faces.
-#' @slot fieldVol Volume of each field. Unit: µm^3
+#' @slot fieldVol Volume of each field. Unit: \eqn{\mu}m^3
 #' @slot mat.in A two column numeric matrix as a representation of the grid environment
 #' as a directed graph. First column (From) and second column (To) are denoting
 #' field's indices in `field.pts`
@@ -305,7 +305,7 @@ diffuse_compounds <- function(object, deltaTime, cl, n.cores) {
     # VIA RccpArmadillo
     conc.list.tmp <- lapply(ind_var_chunks, function(x) {
 
-      diff_shere_surface_area <- object@compound.D[x] * 60 * 60 * deltaTime # surface area in µm^2 after one iteration step
+      diff_shere_surface_area <- object@compound.D[x] * 60 * 60 * deltaTime # surface area in micro-m^2 after one iteration step
       diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
       diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
 
@@ -332,7 +332,7 @@ diffuse_compounds <- function(object, deltaTime, cl, n.cores) {
     ind_variable <- which(apply(object@exoenzymes.conc,2,sd) > 0 & exec.D > 0)
 
     if(length(ind_variable) > 0) {
-      diff_shere_surface_area <- exec.D[ind_variable] * 60 * 60 * deltaTime # surface area in µm^2 after one iteration step
+      diff_shere_surface_area <- exec.D[ind_variable] * 60 * 60 * deltaTime # surface area in micro-m^2 after one iteration step
       diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
       diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
 

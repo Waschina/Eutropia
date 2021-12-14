@@ -10,11 +10,11 @@ NULL
 }
 
 .onLoad <- function(libname, pkgname) {
-  if("cplexAPI" %in% installed.packages()) {
+  if("cplexAPI" %in% utils::installed.packages()) {
     sybil::SYBIL_SETTINGS("SOLVER","cplexAPI")
-    cat("Solver: cplexAPI\n")
+    packageStartupMessage("Solver: cplexAPI")
   } else {
     sybil::SYBIL_SETTINGS("SOLVER","glpkAPI")
-    cat("Solver: glpkAPI\n")
+    packageStartupMessage("Solver: glpkAPI")
   }
 }
