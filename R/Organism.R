@@ -5,15 +5,15 @@
 #'
 #' @exportClass Organism
 #'
-#' @slot cellDiameter Numeric for the initial Diameter of cell spheres in µm
+#' @slot cellDiameter Numeric for the initial Diameter of cell spheres in \eqn{\mu}m
 #' @slot cellMassInit Numeric for the initial cell mass in pg
 #' @slot cellMassAtDivision Limit of a cell's mass before it divided into two
 #' daughter cells. Unit: pg
 #' @slot cellShape Character for the cell shape type. Currently, only coccus/sphere
 #' shapes are supported.
-#' @slot vmax Numeric for the maximum speed a cell can move in µm/s
+#' @slot vmax Numeric for the maximum speed a cell can move in \eqn{\mu}m/s
 #' @slot scavengeDist Numeric indicating the maximum distance (from cell surface)
-#' a cell can scavenge nutrients from its surrounding. Unit: µm
+#' a cell can scavenge nutrients from its surrounding. Unit: \eqn{\mu}m
 #' @slot chemotaxisCompound Character vector with the compound IDs that influence
 #' the cells chemotaxis behavior.
 #' @slot chemotaxisStrength Numeric vector that indicates the strength of
@@ -33,12 +33,12 @@ setClass("Organism",
 
          slots = c(
            # biological parameters
-           cellDiameter       = "numeric", # µm
+           cellDiameter       = "numeric", # micro-m
            cellMassInit       = "numeric", # pg
            cellMassAtDivision = "numeric", # pg
            cellShape          = "character", # currently only coccus
-           vmax               = "numeric", # in µm/s
-           scavengeDist       = "numeric", # in µm
+           vmax               = "numeric", # in micro-m/s
+           scavengeDist       = "numeric", # in micro-m
 
            # Chemotaxis
            chemotaxisCompound = "character",

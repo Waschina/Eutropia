@@ -29,7 +29,7 @@ from `compounds` in the same order. Values in mM.}
 remain constant over time despite of potential uptake or production by cells.}
 
 \item{compound.D}{Numeric vector with the compounds' diffusion coefficients
-in µm^2/s. Default: 75}
+in \eqn{\mu}m^2/s. Default: 75}
 }
 \value{
 Return a S4-object of type \link{growthSimulation}.

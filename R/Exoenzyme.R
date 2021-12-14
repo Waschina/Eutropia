@@ -7,7 +7,7 @@
 #'
 #' @slot id Character for exoenzyme ID
 #' @slot name Characer of exoenzyme name
-#' @slot D Numeric of the enzymes' diffusion coefficients. Unit: µm^2 per
+#' @slot D Numeric of the enzymes' diffusion coefficients. Unit: \eqn{\mu}m^2 per
 #' sec
 #' @slot lambda Numeric for enzyme's decay constants. Unit: per hr
 #' @slot Kcat Numeric for turnover rate (kcat) in MM-kinetics. Unit: 1/s
@@ -53,7 +53,7 @@ setClass("Exoenzyme",
 #' by the organism. Unit: nmol enzyme catalytic centers per gDW cells per hr.
 #' Default: 0.01
 #' @param name Character with an optional name for the enzyme.
-#' @param D Diffusion coefficient of the enzyme. Unit µm^2/s. Default: 10
+#' @param D Diffusion coefficient of the enzyme. Unit \eqn{\mu}m^2/s. Default: 10
 #' @param lambda Numeric indicating the decay rate of the enzyme. Unit: per hour.
 #' Default: 0.4 . The enzyme's half life can be calculated by ln(2)/lambda
 #' @param Kcat Numeric for enzyme's turnover rate. Unit: 1/s . Default: 10000

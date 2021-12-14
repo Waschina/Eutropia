@@ -435,7 +435,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
 
     ncells_new <- nrow(object@cellDT)
 
-    cvmax <- unlist(lapply(object@models, function(x) x@vmax)) * 3600 * object@deltaTime # max speed in µm per deltaTime
+    cvmax <- unlist(lapply(object@models, function(x) x@vmax)) * 3600 * object@deltaTime # max speed in micro-m per deltaTime
 
     # Brownian motion of cells (assuming normal distribution)
     r_motion <- matrix(stats::rnorm(ncells_new * 2,sd = object@rMotion * 60 * object@deltaTime),

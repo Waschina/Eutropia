@@ -10,7 +10,7 @@ calc_assortment(object, r = 5, iter = NULL, n_simulations = 10)
 \item{object}{S4-object of type \code{growthSimulation}.}
 
 \item{r}{Numeric. Maximum distance to to other cells to considered as
-neighbour. Refers to the surface-to-surface distance of cells. Unit: µm.}
+neighbour. Refers to the surface-to-surface distance of cells. Unit: \eqn{\mu}m.}
 
 \item{iter}{Positive integer number of the simulation step/iteration at which
 the cell assortment should be calculated. If NULL, current distribution is

@@ -20,7 +20,7 @@ performed for this \link{growthSimulation} object.}
 hours.}
 
 \item{\code{rMotion}}{double. Maximum x- and y distance a cell can travel by means of
-random movement per simulation round. Unit: µm per minute.}
+random movement per simulation round. Unit: \eqn{\mu}m per minute.}
 
 \item{\code{models}}{List for \link{Organism} objects to represent the different
 strains in the simulation.}

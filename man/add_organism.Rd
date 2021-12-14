@@ -48,10 +48,10 @@ the distribution method for initial cells. Default: "random_centroid"}
 \item{distribution.center}{Numeric vector of length 2, which specifies the
 coordinates of the centre for the `distribution.method`.}
 
-\item{distribution.radius}{double. Spcifies the radius (in µm) in which
+\item{distribution.radius}{double. Spcifies the radius (in \eqn{\mu}m) in which
 initial cells are distributed.}
 
-\item{cellDiameter}{double. Diameter in µm of initial cells.}
+\item{cellDiameter}{double. Diameter in \eqn{\mu}m of initial cells.}
 
 \item{cellMassInit}{double. Mass in pg of initial cells. Default is 0.28 pg}
 
@@ -61,9 +61,9 @@ daughter cells. Default: 0.56 pg}
 \item{cellShape}{character. Shape of cells. Currently only "coccus" is
 supported.}
 
-\item{vmax}{double. Maximum velocity of a cell in µm per second.}
+\item{vmax}{double. Maximum velocity of a cell in \eqn{\mu}m per second.}
 
-\item{scavengeDist}{double. Distance in µm a cell can scavenge nutrients from
+\item{scavengeDist}{double. Distance in \eqn{\mu}m a cell can scavenge nutrients from
 its surrounding/microoenvironment.}
 
 \item{rm.deadends}{If TRUE, dead-end metabolites and reactions are removed
@@ -107,7 +107,7 @@ this package changes the value to it's negative counterpart if a positive value
 is provided.
 
 The default cell diameter (\eqn{(3 * 1 / (4 * pi))^(1/3) * 2}) is that of a
-sphere with 1 µm^3 volume.
+sphere with 1 \eqn{\mu}m^3 volume.
 
 'chemotaxisHillKA' and 'chemotaxisHillCoef' are metabolite sensing sensitivity
 parameters, which is modeled as a Hill equation. Default values correspond to

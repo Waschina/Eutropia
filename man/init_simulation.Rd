@@ -19,7 +19,7 @@ Alternatively, a character indicating one of the polygon presets can be
 provides (see details).}
 
 \item{gridFieldSize}{double. Distance between neighboring environments 3D
-mesh field elements (rhombic dodecahedrons) in µm.}
+mesh field elements (rhombic dodecahedrons) in \eqn{\mu}m.}
 
 \item{gridFieldLayers}{integer. z-dimension (height) as the number of layers
 of field elements.}
@@ -28,7 +28,7 @@ of field elements.}
 simulation in hours.}
 
 \item{rMotion}{double. Maximum distance a cell can travel by means of
-Brownian motion per minute Default: 0.1 µm}
+Brownian motion per minute Default: 0.1 \eqn{\mu}m}
 }
 \value{
 Object of class \link{growthSimulation}.
@@ -41,23 +41,23 @@ Available universe polygon presets:
 \itemize{
   \item{"Petri_<R>"}{ is a Petri dish-like object (actually a 99-corner polygon),
   where `<R>` should be replaced with an integer, indicating the radius of the
-  dish in µm.}
+  dish in \eqn{\mu}m.}
   \item{"Rectangle_<X>_<Y>"}{ is a, *surprise*, rectangle. `<X>` and `<Y>` should be
-  integers specifying the width and height in µm, respectively.}
+  integers specifying the width and height in \eqn{\mu}m, respectively.}
   \item{"Kiel_<L>"}{ let microbes thrive within Kiel's city limits. Use `<L>`
-  to specify the latitude dimension in µm (integer). The longitude is automatically
+  to specify the latitude dimension in \eqn{\mu}m (integer). The longitude is automatically
   scaled accordingly.}
 }
 }
 \examples{
-# Construction a square environment of dimensions 100µm x 100µm x 5µm
+# Construction a square environment of dimensions 100\eqn{\mu}m x 100\eqn{\mu}m x 5\eqn{\mu}m
 sim <- init_simulation(cbind(c(-50, -50, 50, 50),
                              c(-60, 60, 60, -60)),
                        gridFieldSize = 1, gridFieldLayers = 3)
 sim <- init_simulation("rectangle_100_120", gridFieldSize = 1,
                        gridFieldLayers = 5)
 
-# Construct a Petri dish-like simulation environment (radius: 100 µm)
+# Construct a Petri dish-like simulation environment (radius: 100 \eqn{\mu}m)
 sim <- init_simulation("Petri_100", gridFieldSize = 1,
                        gridFieldLayers = 10)
 

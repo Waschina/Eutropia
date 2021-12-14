@@ -14,7 +14,7 @@ scavenge_compounds <- function(localEnv, env_conc, env_cpds, env_fieldVol) {
   # retrieve absolute amount of accessible metabolites
   # TODO: Add constant compounds
   accCpd <- list()
-  tmp_met <- env_conc / 1000 * env_fieldVol # fmol in each field (div. by 1000 because conc. are stored in mM and field volume in µm^3)
+  tmp_met <- env_conc / 1000 * env_fieldVol # fmol in each field (div. by 1000 because conc. are stored in mM and field volume in micro-m^3)
   tmp_met <- tmp_met * localEnv$acc.prop # fmol accessible in each field
 
   accCpd$fmolPerField <- tmp_met

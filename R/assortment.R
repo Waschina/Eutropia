@@ -6,7 +6,7 @@
 #'
 #' @param object S4-object of type \code{growthSimulation}.
 #' @param r Numeric. Maximum distance to to other cells to considered as
-#' neighbour. Refers to the surface-to-surface distance of cells. Unit: µm.
+#' neighbour. Refers to the surface-to-surface distance of cells. Unit: \eqn{\mu}m.
 #' @param iter Positive integer number of the simulation step/iteration at which
 #' the cell assortment should be calculated. If NULL, current distribution is
 #' displayed.

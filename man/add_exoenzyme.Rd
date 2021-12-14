@@ -40,7 +40,7 @@ Default: 0.01}
 
 \item{name}{Character with an optional name for the enzyme.}
 
-\item{D}{Diffusion coefficient of the enzyme. Unit µm^2/s. Default: 10}
+\item{D}{Diffusion coefficient of the enzyme. Unit \eqn{\mu}m^2/s. Default: 10}
 
 \item{lambda}{Numeric indicating the decay rate of the enzyme. Unit: per hour.
 Default: 0.4 . The enzyme's half life can be calculated by ln(2)/lambda}

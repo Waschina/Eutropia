@@ -14,7 +14,7 @@
 #' @slot deltaTime double for length of each time step for the simulation in
 #' hours.
 #' @slot rMotion double. Maximum x- and y distance a cell can travel by means of
-#' random movement per simulation round. Unit: µm per minute.
+#' random movement per simulation round. Unit: \eqn{\mu}m per minute.
 #' @slot models List for \link{Organism} objects to represent the different
 #' strains in the simulation.
 #' @slot history list with recordings of simulation status information at each
@@ -73,13 +73,13 @@ is.growthSimulation <- function(x) inherits(x, "growthSimulation")
 #' Alternatively, a character indicating one of the polygon presets can be
 #' provides (see details).
 #' @param gridFieldSize double. Distance between neighboring environments 3D
-#' mesh field elements (rhombic dodecahedrons) in µm.
+#' mesh field elements (rhombic dodecahedrons) in \eqn{\mu}m.
 #' @param gridFieldLayers integer. z-dimension (height) as the number of layers
 #' of field elements.
 #' @param deltaTime double specifying the length of each time step for the
 #' simulation in hours.
 #' @param rMotion double. Maximum distance a cell can travel by means of
-#' Brownian motion per minute Default: 0.1 µm
+#' Brownian motion per minute Default: 0.1 \eqn{\mu}m
 #'
 #' @return Object of class \link{growthSimulation}.
 #'
@@ -88,23 +88,23 @@ is.growthSimulation <- function(x) inherits(x, "growthSimulation")
 #' \itemize{
 #'   \item{"Petri_<R>"}{ is a Petri dish-like object (actually a 99-corner polygon),
 #'   where `<R>` should be replaced with an integer, indicating the radius of the
-#'   dish in µm.}
+#'   dish in \eqn{\mu}m.}
 #'   \item{"Rectangle_<X>_<Y>"}{ is a, *surprise*, rectangle. `<X>` and `<Y>` should be
-#'   integers specifying the width and height in µm, respectively.}
+#'   integers specifying the width and height in \eqn{\mu}m, respectively.}
 #'   \item{"Kiel_<L>"}{ let microbes thrive within Kiel's city limits. Use `<L>`
-#'   to specify the latitude dimension in µm (integer). The longitude is automatically
+#'   to specify the latitude dimension in \eqn{\mu}m (integer). The longitude is automatically
 #'   scaled accordingly.}
 #' }
 #'
 #' @examples
-#' # Construction a square environment of dimensions 100µm x 100µm x 5µm
+#' # Construction a square environment of dimensions 100\eqn{\mu}m x 100\eqn{\mu}m x 5\eqn{\mu}m
 #' sim <- init_simulation(cbind(c(-50, -50, 50, 50),
 #'                              c(-60, 60, 60, -60)),
 #'                        gridFieldSize = 1, gridFieldLayers = 3)
 #' sim <- init_simulation("rectangle_100_120", gridFieldSize = 1,
 #'                        gridFieldLayers = 5)
 #'
-#' # Construct a Petri dish-like simulation environment (radius: 100 µm)
+#' # Construct a Petri dish-like simulation environment (radius: 100 \eqn{\mu}m)
 #' sim <- init_simulation("Petri_100", gridFieldSize = 1,
 #'                        gridFieldLayers = 10)
 #'
@@ -165,7 +165,7 @@ universe_polygon_preset <- function(universePolygon) {
     p_r <- as.numeric(sub("^[P|p]etri_(\\S+)$", "\\1", universePolygon))
 
     if(p_r < 2.5)
-      stop("Petri dish radius too small. (min 2.5 µm)")
+      stop("Petri dish radius too small. (min 2.5 \u03BCm)")
 
     petri <- matrix(0, ncol = 2, nrow = 100)
 
@@ -183,7 +183,7 @@ universe_polygon_preset <- function(universePolygon) {
     y <- as.numeric(sub("^[R|r]ectangle_[0-9]+_(\\S+)$", "\\1", universePolygon)) / 2
 
     if(x < 5 | y < 5)
-      stop("Rectangle dimesions too small. (x,y >= 5 µm)")
+      stop("Rectangle dimesions too small. (x,y >= 5 \u03BCm)")
 
     upg <- cbind(c(x,x,-x,-x),
                  c(y,-y,-y,y))
@@ -201,7 +201,7 @@ universe_polygon_preset <- function(universePolygon) {
     Kiel <- Kiel * x/2
 
     if(x < 10)
-      stop("Kiel latitude dimension too small (min 10 µm).")
+      stop("Kiel latitude dimension too small (min 10 \u03BCm).")
 
     return(Kiel)
   }
@@ -231,16 +231,16 @@ universe_polygon_preset <- function(universePolygon) {
 #' the distribution method for initial cells. Default: "random_centroid"
 #' @param distribution.center Numeric vector of length 2, which specifies the
 #' coordinates of the centre for the `distribution.method`.
-#' @param distribution.radius double. Spcifies the radius (in µm) in which
+#' @param distribution.radius double. Spcifies the radius (in \eqn{\mu}m) in which
 #' initial cells are distributed.
-#' @param cellDiameter double. Diameter in µm of initial cells.
+#' @param cellDiameter double. Diameter in \eqn{\mu}m of initial cells.
 #' @param cellMassInit double. Mass in pg of initial cells. Default is 0.28 pg
 #' @param cellMassAtDivision double. Cell mass at which a cell divides into two
 #' daughter cells. Default: 0.56 pg
 #' @param cellShape character. Shape of cells. Currently only "coccus" is
 #' supported.
-#' @param vmax double. Maximum velocity of a cell in µm per second.
-#' @param scavengeDist double. Distance in µm a cell can scavenge nutrients from
+#' @param vmax double. Maximum velocity of a cell in \eqn{\mu}m per second.
+#' @param scavengeDist double. Distance in \eqn{\mu}m a cell can scavenge nutrients from
 #' its surrounding/microoenvironment.
 #' @param rm.deadends If TRUE, dead-end metabolites and reactions are removed
 #' from the `model`, which reduces the computation time for FBA, but has
@@ -272,7 +272,7 @@ universe_polygon_preset <- function(universePolygon) {
 #' is provided.
 #'
 #' The default cell diameter (\eqn{(3 * 1 / (4 * pi))^(1/3) * 2}) is that of a
-#' sphere with 1 µm^3 volume.
+#' sphere with 1 \eqn{\mu}m^3 volume.
 #'
 #' 'chemotaxisHillKA' and 'chemotaxisHillCoef' are metabolite sensing sensitivity
 #' parameters, which is modeled as a Hill equation. Default values correspond to
@@ -321,7 +321,7 @@ add_organism <- function(object,
                          distribution.method = "random_centroid",
                          distribution.center = NULL,
                          distribution.radius = NULL,
-                         cellDiameter = (3 * 1 / (4 * pi))^(1/3) * 2, # diameter of sphere with 1 µm^3 volume
+                         cellDiameter = (3 * 1 / (4 * pi))^(1/3) * 2, # diameter of sphere with 1 micro-m^3 volume
                          cellMassInit = 0.28,
                          cellMassAtDivision = 0.56,
                          cellShape = "coccus",
@@ -513,11 +513,11 @@ setMethod(f          = "show",
 
             # Environment
             cat("Cell growth environment\n")
-            # cat("    Universe dimensions (µm):\t\t",
+            # cat("    Universe dimensions (micro-m):\t\t",
             #     abs(round(min(object@environ@field.pts@coords[,1])-max(object@environ@field.pts@coords[,1]), digits = 2))," x ",
             #     abs(round(min(object@environ@field.pts@coords[,2])-max(object@environ@field.pts@coords[,2]), digits = 2))," x ",
             #     abs(round(min(object@environ@field.pts@coords[,3])-max(object@environ@field.pts@coords[,3]), digits = 2)),"\n")
-            cat("    Universe volume (µm^3):\t\t", round(object@environ@fieldVol * object@environ@nfields, digits = 2) , "\n")
+            cat("    Universe volume (\u03BCm^3):\t\t", round(object@environ@fieldVol * object@environ@nfields, digits = 2) , "\n")
             cat("    Number of rhombic dodecahedrons:\t",object@environ@nfields,"\n")
             cat("    Number of compounds:\t\t",length(object@environ@compounds),
                 "(", sum(!object@environ@conc.isConstant),"variable )\n")
@@ -545,7 +545,7 @@ setMethod(f          = "show",
 #' @param is.constant Logical vector that indicates if the compound should
 #' remain constant over time despite of potential uptake or production by cells.
 #' @param compound.D Numeric vector with the compounds' diffusion coefficients
-#' in µm^2/s. Default: 75
+#' in \eqn{\mu}m^2/s. Default: 75
 #'
 #' @details Compound concentration are equally distributed across the whole
 #' growth environment.

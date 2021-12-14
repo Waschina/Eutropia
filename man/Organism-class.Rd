@@ -11,7 +11,7 @@ Structure of the S4 class "Organism"
 \section{Slots}{
 
 \describe{
-\item{\code{cellDiameter}}{Numeric for the initial Diameter of cell spheres in µm}
+\item{\code{cellDiameter}}{Numeric for the initial Diameter of cell spheres in \eqn{\mu}m}
 
 \item{\code{cellMassInit}}{Numeric for the initial cell mass in pg}
 
@@ -21,10 +21,10 @@ daughter cells. Unit: pg}
 \item{\code{cellShape}}{Character for the cell shape type. Currently, only coccus/sphere
 shapes are supported.}
 
-\item{\code{vmax}}{Numeric for the maximum speed a cell can move in µm/s}
+\item{\code{vmax}}{Numeric for the maximum speed a cell can move in \eqn{\mu}m/s}
 
 \item{\code{scavengeDist}}{Numeric indicating the maximum distance (from cell surface)
-a cell can scavenge nutrients from its surrounding. Unit: µm}
+a cell can scavenge nutrients from its surrounding. Unit: \eqn{\mu}m}
 
 \item{\code{chemotaxisCompound}}{Character vector with the compound IDs that influence
 the cells chemotaxis behavior.}

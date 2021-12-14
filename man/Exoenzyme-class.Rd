@@ -15,7 +15,7 @@ Structure of the S4 class "Exoenzyme"
 
 \item{\code{name}}{Characer of exoenzyme name}
 
-\item{\code{D}}{Numeric of the enzymes' diffusion coefficients. Unit: µm^2 per
+\item{\code{D}}{Numeric of the enzymes' diffusion coefficients. Unit: \eqn{\mu}m^2 per
 sec}
 
 \item{\code{lambda}}{Numeric for enzyme's decay constants. Unit: per hr}
