@@ -574,7 +574,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
 #' @import sybil
 #'
 init_warm_mods <- function(x, lpsolver, okcode) {
-  require(EcoAgents)
+  require(Eutropia)
 
   SYBIL_SETTINGS("SOLVER",lpsolver)
   ok <<- okcode

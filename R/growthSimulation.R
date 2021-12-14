@@ -193,7 +193,7 @@ universe_polygon_preset <- function(universePolygon) {
 
   # Kiel city limits (proof of principle)
   if(grepl("^[K|k]iel_[0-9]+$",universePolygon)) {
-    Kiel <- as.matrix(fread(system.file("extdata","kiel.csv", package = "EcoAgents")))
+    Kiel <- as.matrix(fread(system.file("extdata","kiel.csv", package = "Eutropia")))
     Kiel_dim <- max(Kiel[,1])
     Kiel <- Kiel / Kiel_dim
 
@@ -292,9 +292,9 @@ universe_polygon_preset <- function(universePolygon) {
 #' # to the environment; each with 15 initial cells
 #' models <- list()
 #' models[['eure']] <- readRDS(system.file("extdata", "eure.RDS",
-#'                             package="EcoAgents"))
+#'                             package="Eutropia"))
 #' models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS",
-#'                             package="EcoAgents"))
+#'                             package="Eutropia"))
 #'
 #' sim <- init_simulation(cbind(c(-150, -150, 150, 150),
 #'                              c(-150, 150, 150, -150)),

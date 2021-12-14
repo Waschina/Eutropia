@@ -1,5 +1,5 @@
 ## usethis namespace: start
 #' @importFrom Rcpp sourceCpp
-#' @useDynLib EcoAgents, .registration = TRUE
+#' @useDynLib Eutropia, .registration = TRUE
 ## usethis namespace: end
 NULL
