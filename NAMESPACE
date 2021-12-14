@@ -3,6 +3,7 @@
 export(add_compounds)
 export(add_exoenzyme)
 export(add_organism)
+export(calc_assortment)
 export(dilute_compounds)
 export(init_simulation)
 export(plot_cells)

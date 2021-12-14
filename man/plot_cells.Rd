@@ -22,7 +22,8 @@ plot_cells(
 
 \item{ylim}{Numeric vector of length 2, specifying the y-range to be displayed.}
 
-\item{iter}{Positive integer number of the simulation step/iteration to plot the cell distribution. If past simulation are displayed, the cell postitions needed to be recorded when running the simulation before (see \code{link{run.simulation}}). If NULL, current distribution is displayed.}
+\item{iter}{Positive integer number of the simulation step/iteration to plot
+the cell distribution. If NULL, current distribution is displayed.}
 
 \item{scalebar.color}{Color of the scale bar and its annotation. Default: "white".}
 

@@ -8,7 +8,8 @@
 #' @param object S4-object of type \code{growthSimulation}.
 #' @param xlim Numeric vector of length 2, specifying the x-range to be displayed.
 #' @param ylim Numeric vector of length 2, specifying the y-range to be displayed.
-#' @param iter Positive integer number of the simulation step/iteration to plot the cell distribution. If past simulation are displayed, the cell postitions needed to be recorded when running the simulation before (see \code{link{run.simulation}}). If NULL, current distribution is displayed.
+#' @param iter Positive integer number of the simulation step/iteration to plot
+#' the cell distribution. If NULL, current distribution is displayed.
 #' @param scalebar.color Color of the scale bar and its annotation. Default: "white".
 #' @param incl.timestamp Boolean indicating whether a timestamp should be
 #' included in the plot. Default: TRUE
