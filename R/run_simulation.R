@@ -143,7 +143,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
   # Check if cplexAPI is installed
   lpsolver <- "glpkAPI"
   okcode   <- 5
-  if(requireNamespace("cplexAPI", quietly = TRUE)) {
+  if("cplexAPI" %in% rownames(installed.packages())) {
     lpsolver <- "cplexAPI"
     okcode   <- 1
   }
@@ -784,14 +784,7 @@ agentFBA_ex <- function(x) {
 #' @import sybil
 close_clusters <- function(x){
   for(mi in names(fork_mods)) {
-    if(SYBIL_SETTINGS("SOLVER") == "cplexAPI") {
-      requireNamespace("cplexAPI", quietly = TRUE)
-      delProbCPLEX(fork_mods[[mi]]@problem@oobj@env, fork_mods[[mi]]@problem@oobj@lp)
-      closeEnvCPLEX(fork_mods[[mi]]@problem@oobj@env)
-    } else {
-      requireNamespace("glpkAPI", quietly = TRUE)
-      delProbGLPK(fork_mods[[mi]]@problem@oobj)
-    }
+    delProb(fork_mods[[mi]]@problem)
   }
   return(NULL)
 }

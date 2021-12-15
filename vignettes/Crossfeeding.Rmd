@@ -71,7 +71,7 @@ sim <- add_compounds(sim,
 
 ## The simulation
 
-We are all set to run our first simulation. It will run for 50 iterations (= 500 minutes simulated time). The simulation may take around 4 minutes 30 seconds to finish, because of the option `lim_time = 4.5`, while the last iteration is allowed to finish even if the time limit is exceeded. You can of course increase the time limit. The number of iterations depends on the systems performance.
+We are all set to run our first simulation. It will run for 50 iterations (= 500 minutes simulated time). The simulation may take around 4 minutes 30 seconds to finish, because of the option `lim_time = 4.5`, while the last iteration is allowed to finish even if the time limit is exceeded. You can of course increase the time limit. The number of iterations depends on the systems performance with a here defined limit of 50 iterations.
 
 ```{r}
 sim <- run_simulation(sim, niter = 50, verbose = 1, lim_time = 4.5)
