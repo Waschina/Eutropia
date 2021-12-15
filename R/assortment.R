@@ -43,7 +43,7 @@ calc_assortment <- function(object, r = 5, iter = NULL, n_simulations = 10) {
   cellposDT <- data.table()
   # current
   if(is.null(iter)) {
-    cellposDT <- object@cellDT
+    cellposDT <- copy(object@cellDT)
   }
 
   # from history
@@ -53,7 +53,7 @@ calc_assortment <- function(object, r = 5, iter = NULL, n_simulations = 10) {
       iter <- object@n_rounds
     }
     i_round <- iter
-    cellposDT <- object@history[[iter+1]]$cells
+    cellposDT <- copy(object@history[[iter+1]]$cells)
   }
 
   # core function for assortment and segregation calculations
