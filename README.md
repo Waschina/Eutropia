@@ -8,7 +8,7 @@ Agent-based metabolic modelling of microbial communities in time and continuous 
 
 ### What is *Eutropia*
 
-*Eutropia* is an R-package for cell agent-based metabolic modelling of microbial communities. It allows dynamic simulations of two-dimensional surface-attached cell communities. A few features of Eutropia, that you might find interesting:
+*Eutropia* is a R-package for cell agent-based metabolic modelling of microbial communities. It allows dynamic simulations of two-dimensional surface-attached cell communities. A few features of Eutropia, that you might find interesting:
 
 - Complex polygons (also non-convex) as growth environment
 - Extracellular enzymes
@@ -18,14 +18,15 @@ Agent-based metabolic modelling of microbial communities in time and continuous 
 
 ### Installation
 
-*Eutropia* is in its development phase. The current development version can be installed using. If you have not installed `devtools` yet, just uncomment the first line.
+*Eutropia* is in its development phase. The current development version can be installed using: 
 
 ```R
 # install.packages("devtools")
 devtools::install_github("Waschina/Eutropia")
 ```
+If you have not installed `devtools` yet, just uncomment the first line.
 
-In addition, we recoomend to install also the development version of the dependency `particles`, which is used as physics engine (e.g. cell collision).
+In addition, we recommend to install also the development version of the dependency `particles`, which is *Eutropia* uses as physics engine (e.g. cell collision).
 
 ```R
 devtools::install_github("thomasp85/particles")
