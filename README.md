@@ -2,6 +2,10 @@
 
 Agent-based metabolic modelling of microbial communities in time and continuous µ-meter-scale space
 
+<!-- badges: start -->
+  [![R-CMD-check](https://github.com/Waschina/Eutropia/workflows/R-CMD-check/badge.svg)](https://github.com/Waschina/Eutropia/actions)
+<!-- badges: end -->
+
 ## What is *Eutropia*
 
 *Eutropia* is an R-package for cell agent-based metabolic modelling of microbial communities. It allows dynamic simulations of two-dimensional surface-attached cell communities. A few features of Eutropia, that you might find interesting:
