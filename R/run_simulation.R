@@ -47,7 +47,7 @@
 #' Exoenzyme concentrations cannot be recorded in the current version.\cr
 #'
 #' Convergence is checked by calculating the ratio:
-#' \deqn{c := | a / min(a_{i-1},...,a_{i-5}) - 1 |}
+#' \deqn{c := | a_i / min(a_{i-1},...,a_{i-5}) - 1 |}
 #' \eqn{a_i} is the total biomass at iteration \eqn{i}. The simulation
 #' terminates if \eqn{c} is below `convergence.e`. Thus, one can expect
 #' longer simulations when reducing `convergence.e`.
@@ -58,6 +58,7 @@
 #' @import data.table
 #' @import tidygraph
 #' @import particles
+#' @import sf
 #' @importFrom stats weighted.mean runif rnorm sd
 #' @importFrom stringi stri_rand_strings
 #'
@@ -161,7 +162,8 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
   j <- 1
 
   # get grid field positions as data.table
-  gridDT <- as.data.table(object@environ@field.pts)
+  gridDT <- as.data.table(st_coordinates(object@environ@field.pts))
+  gridDT <- gridDT[,.(x = X, y = Y, z = Z)]
   gridDT[, "field" := 1:.N]
   setkeyv(gridDT, c("z","x","y"))
 
@@ -269,8 +271,8 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
       for(icpd in object@models[[object@cellDT[x, get("type")]]]@chemotaxisCompound) {
         ind_ct <- which(object@models[[object@cellDT[x, get("type")]]]@chemotaxisCompound == icpd)
         ind <- which(res[["field.cpds"]] == icpd)
-        delta_field_x <- object@environ@field.pts[res[["field.id"]]]$x - ic_x
-        delta_field_y <- object@environ@field.pts[res[["field.id"]]]$y - ic_y
+        delta_field_x <- object@environ@field.pts[res[["field.id"]],"x"] - ic_x
+        delta_field_y <- object@environ@field.pts[res[["field.id"]],"y"] - ic_y
         # normalize
         delta_field_x <- delta_field_x / (res[["size"]]/2 + object@models[[object@cellDT[x, get("type")]]]@scavengeDist)
         delta_field_y <- delta_field_y / (res[["size"]]/2 + object@models[[object@cellDT[x, get("type")]]]@scavengeDist)

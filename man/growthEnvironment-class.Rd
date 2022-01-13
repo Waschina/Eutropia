@@ -11,8 +11,8 @@ Structure of the S4 class "growthEnvironment"
 \section{Slots}{
 
 \describe{
-\item{\code{field.pts}}{Object of class \link[sp]{SpatialPoints}. Coordinates of
-rhombic dodecahedron centers points.}
+\item{\code{field.pts}}{Object of class 'XYZ'. Coordinates of rhombic dodecahedron
+centroids.}
 
 \item{\code{compounds}}{Character vector with compound IDs}
 

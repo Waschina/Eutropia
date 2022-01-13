@@ -97,16 +97,16 @@ is.growthSimulation <- function(x) inherits(x, "growthSimulation")
 #' }
 #'
 #' @examples
-#' # Construction a square environment of dimensions 100\eqn{\mu}m x 100\eqn{\mu}m x 5\eqn{\mu}m
+#' # Construction a square environment of dimensions 100\eqn{\mu}m x 100\eqn{\mu}m x 3\eqn{\mu}m
 #' sim <- init_simulation(cbind(c(-50, -50, 50, 50),
 #'                              c(-60, 60, 60, -60)),
 #'                        gridFieldSize = 1, gridFieldLayers = 3)
 #' sim <- init_simulation("rectangle_100_120", gridFieldSize = 1,
-#'                        gridFieldLayers = 5)
+#'                        gridFieldLayers = 3)
 #'
-#' # Construct a Petri dish-like simulation environment (radius: 100 \eqn{\mu}m)
-#' sim <- init_simulation("Petri_100", gridFieldSize = 1,
-#'                        gridFieldLayers = 10)
+#' # Construct a Petri dish-like simulation environment (radius: 75 \eqn{\mu}m)
+#' sim <- init_simulation("Petri_75", gridFieldSize = 1,
+#'                        gridFieldLayers = 3)
 #'
 #' @import data.table
 #' @importFrom methods new
@@ -121,6 +121,12 @@ init_simulation <- function(universePolygon,
   # generate poygon matrix if preset is chosen
   if(is.character(universePolygon))
     universePolygon <- universe_polygon_preset(universePolygon)
+
+  # last polygon coordinate must be identical to first one
+  if(any(universePolygon[1,] != universePolygon[nrow(universePolygon),])) {
+    universePolygon <- rbind(universePolygon,
+                             universePolygon[1,])
+  }
 
 
   # init growth environment
@@ -171,6 +177,7 @@ universe_polygon_preset <- function(universePolygon) {
 
     petri[,1] <- sin(seq(0, 2*pi, length.out = 100))
     petri[,2] <- cos(seq(0, 2*pi, length.out = 100))
+    petri[100,] <- petri[1,]
 
     petri <- petri * p_r
 
@@ -296,9 +303,9 @@ universe_polygon_preset <- function(universePolygon) {
 #' models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS",
 #'                             package="Eutropia"))
 #'
-#' sim <- init_simulation(cbind(c(-150, -150, 150, 150),
-#'                              c(-150, 150, 150, -150)),
-#'                        gridFieldSize = 1.75, gridFieldLayers = 5)
+#' sim <- init_simulation(cbind(c(-100, -100, 100, 100),
+#'                              c(-100, 100, 100, -100)),
+#'                        gridFieldSize = 1.75, gridFieldLayers = 3)
 #'
 #' sim <- add_organism(sim, model = models[["eure"]], name = "E. rectale",
 #'                     ncells = 15, distribution.radius = 30)
@@ -310,7 +317,7 @@ universe_polygon_preset <- function(universePolygon) {
 #' @import particles
 #' @import tidygraph
 #' @importFrom methods new
-#' @import rgeos
+#' @import sf
 #'
 #' @export
 add_organism <- function(object,
@@ -387,36 +394,37 @@ add_organism <- function(object,
   if(is.null(coords)) {
     if(!(distribution.method %in% c("random","random_centroid")))
       stop("Distribution method not supported. Choose one of \"random\",\"random_centroid\".")
-    universePG <- Polygon(object@universePolygon)
+
+    universePG <- st_polygon(list(object@universePolygon))
 
     if(distribution.method == "random") {
-      coords  <- spsample(universePG, ncells, type = "random")@coords
+      #coords <- spsample(universePG, ncells, type = "random")@coords
+      coords <- st_sample(universePG, ncells, type = "random")
     }
+
     if(distribution.method == "random_centroid") {
 
       PGcent <- distribution.center
       if(is.null(PGcent)) {
-        PGcent <- SpatialPoints(matrix(universePG@labpt,ncol = 2))
+        PGcent <- st_centroid(universePG)
       } else {
-        PGcent <- SpatialPoints(matrix(PGcent,ncol = 2))
+        PGcent <- st_point(PGcent)
       }
 
       maxRadius <- distribution.radius
+
       if(is.null(maxRadius)) {
-        PGline <- Line(universePG@coords)
-        PGlines <- SpatialLines(list(Lines(list(PGline), ID = "one")))
-        maxRadius <- gDistance(PGlines, PGcent) / 3
+        maxRadius <- st_distance(PGcent, st_cast(universePG,
+                                                     "LINESTRING"))[1,1]
       }
+      distr_area <- st_buffer(PGcent, dist = maxRadius)
+      distr_area <- st_intersection(universePG, distr_area)
 
-      coords <- matrix(0, ncol = 2, nrow = ncells)
-
-      r_angle  <- runif(ncells, max = 2*pi)
-      r_radius <- runif(ncells, max = maxRadius)
-
-      coords[,1] <- cos(r_angle) * r_radius + PGcent@coords[1,1]
-      coords[,2] <- sin(r_angle) * r_radius + PGcent@coords[1,2]
+      coords <- st_sample(distr_area, ncells, type = "random")
     }
 
+    coords <- lapply(coords, as.matrix)
+    coords <- do.call(rbind, coords)
   }
 
   newcells <- data.table(cell = (1:ncells)+nrow(object@cellDT),
@@ -513,10 +521,6 @@ setMethod(f          = "show",
 
             # Environment
             cat("Cell growth environment\n")
-            # cat("    Universe dimensions (micro-m):\t\t",
-            #     abs(round(min(object@environ@field.pts@coords[,1])-max(object@environ@field.pts@coords[,1]), digits = 2))," x ",
-            #     abs(round(min(object@environ@field.pts@coords[,2])-max(object@environ@field.pts@coords[,2]), digits = 2))," x ",
-            #     abs(round(min(object@environ@field.pts@coords[,3])-max(object@environ@field.pts@coords[,3]), digits = 2)),"\n")
             cat("    Universe volume (\u03BCm^3):\t\t", round(object@environ@fieldVol * object@environ@nfields, digits = 2) , "\n")
             cat("    Number of rhombic dodecahedrons:\t",object@environ@nfields,"\n")
             cat("    Number of compounds:\t\t",length(object@environ@compounds),
@@ -560,7 +564,7 @@ setMethod(f          = "show",
 #'
 #' @examples
 #' sim <- init_simulation(cbind(c(-100, -100, 100, 100), c(-100, 100, 100, -100)),
-#'                        gridFieldSize = 2, gridFieldLayers = 5)
+#'                        gridFieldSize = 2, gridFieldLayers = 3)
 #'
 #' sim <- add_compounds(sim,
 #'                      compounds = c("cpd00027_e0","cpd00029_e0","cpd00047_e0",
@@ -657,6 +661,7 @@ add_compounds <- function(object, compounds, concentrations,
 
   return(object)
 }
+
 
 # ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
 # Dilute compounds            #

@@ -4,7 +4,7 @@ author: "Silvio Waschina"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Crossfeeding}
+  %\VignetteIndexEntry{Cross-feeding of two gastrointestinal bacteria}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

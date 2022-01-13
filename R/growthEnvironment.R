@@ -6,9 +6,10 @@
 #' @exportClass growthEnvironment
 #'
 #' @import Matrix
+#' @import sf
 #'
-#' @slot field.pts Object of class \link[sp]{SpatialPoints}. Coordinates of
-#' rhombic dodecahedron centers points.
+#' @slot field.pts Object of class 'XYZ'. Coordinates of rhombic dodecahedron
+#' centroids.
 #' @slot compounds Character vector with compound IDs
 #' @slot compound.names Character vector with compound names
 #' @slot compound.D Numeric vector of the diffusion coefficient values for each
@@ -36,7 +37,7 @@
 setClass("growthEnvironment",
 
          slots = c(
-           field.pts       = "SpatialPoints",
+           field.pts       = "XYZ",
            compounds       = "character",
            compound.names  = "character",
            compound.D      = "numeric",
@@ -62,38 +63,38 @@ setClass("growthEnvironment",
 # @param field.size Is the diameter of the circumscribed sphere. Its relation to a is: z = 4*a/sqrt(3)
 # @param expand Length of field grid exceeding the \code{polygon.cords}. Should be higher than 2x\code{field.size}. Really?
 #
-#' @import rgeos
-#' @import sp
+#' @import sf
 #' @import data.table
 setMethod("initialize", "growthEnvironment",
           function(.Object,
                    polygon.coords, field.size, field.layers = 3, expand = field.size, ...) {
             .Object <- callNextMethod(.Object, ...)
 
-            # Set seed so grid mesh sampling is reproducible
-            set.seed(24118)
-
             field.layers <- as.integer(field.layers)
             # Important: Distance of field centers of neighboring fields: 2*H = 1*R_i = 2 * a * sqrt(2/3)
             # equal double the distance from center to plane faces
 
             # Make base layer of fields (Rhombic dodecahedrons)
-            area <- Polygon(polygon.coords)
-            area <- Polygons(list(area), "s1")
+            area <- st_polygon(list(polygon.coords))
+            #plot(area, col = "blue")
 
-            area.sp <- SpatialPolygons(list(area))
+            # expand the polygon boundaries a bit (bleeding)
+            fieldGrid <- st_buffer(area, expand)
+            #plot(fieldGrid, add = TRUE, alpha = 0.5)
 
-            fieldGrid <- gBuffer(area.sp, width = expand)
+            # create raster grid
+            field.pts_base <- st_make_grid(fieldGrid, cellsize = field.size,
+                                           what = "centers")
+            field.pts_base <- field.pts_base[fieldGrid]
+            #plot(field.pts_base, add = TRUE)
 
-            field.pts_base <- spsample(fieldGrid,
-                                       type="regular",
-                                       cellsize=field.size)
-            field.pts_base <- as.matrix(field.pts_base@coords)
-            field.pts_base <- cbind(field.pts_base, matrix(0, ncol = 1, nrow = nrow(field.pts_base)))
+
+            field.pts_base <- lapply(field.pts_base, as.matrix)
+            field.pts_base <- do.call(rbind, field.pts_base)
+            field.pts_base <- cbind(field.pts_base,
+                                    matrix(0, ncol = 1,
+                                           nrow = nrow(field.pts_base)))
             colnames(field.pts_base) <- c("x","y","z")
-
-            # reset random seed
-            rm(.Random.seed, envir=globalenv())
 
             # Make additional layers
             #fieldHeight    <- sqrt(6)/3 * field.size  # z-axis difference between field centers of neighboring layers
@@ -114,9 +115,9 @@ setMethod("initialize", "growthEnvironment",
                 i <- i + 1
               }
             }
-            field.pts <- SpatialPoints(field.pts)
+            field.pts <- st_multipoint(field.pts)
 
-            nfields <- nrow(field.pts@coords)
+            nfields <- nrow(field.pts)
 
             .Object@field.pts       <- field.pts
             .Object@compounds       <- character(0)
@@ -161,13 +162,13 @@ setGeneric(name="build.DCM",
 
 # Build diffusion coefficient matirx
 setMethod(f          = "build.DCM",
-          signature  = signature(field.pts      = "SpatialPoints",
+          signature  = signature(field.pts      = "XYZ",
                                  field.size     = "numeric"),
           definition = function(field.pts, field.size) {
 
             fs <- field.size
 
-            lis <- as.data.table(field.pts)
+            lis <- as.data.table(field.pts[,])
             lis[, id := 1:.N]
 
             # correct for rounding issues

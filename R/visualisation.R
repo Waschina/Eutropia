@@ -183,6 +183,7 @@ plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
 #'
 #' @import ggplot2
 #' @import hms
+#' @import sf
 #'
 #' @export
 plot_environment <- function(object, compounds, compound.names = NULL,
@@ -237,7 +238,7 @@ plot_environment <- function(object, compounds, compound.names = NULL,
   }
 
   # which layer to plot? By default: Baseplane
-  zvals <- sort(unique(object@environ@field.pts@coords[,3]))
+  zvals <- sort(unique(object@environ@field.pts[,3]))
   zvalOI <- zvals[1]
   if(layer < 0 | layer > (length(zvals)-1) | layer %% 1 != 0) {
     warning("Invalid layer. Plotting data for base plane (0).")
@@ -284,7 +285,7 @@ plot_environment <- function(object, compounds, compound.names = NULL,
 
   envDT <- envDT[, ..compounds]
 
-  envDT <- cbind(object@environ@field.pts@coords, envDT)
+  envDT <- cbind(object@environ@field.pts[,], envDT)
   envDT <- envDT[z == zvalOI] # baseplane
   envDT <- melt(envDT, id.vars = c("x","y"), variable.name = "Compound", value.name = "mM")
   envDT <- merge(envDT, cpd_nameDT)
@@ -375,6 +376,7 @@ plot_environment <- function(object, compounds, compound.names = NULL,
 #' @return A \link{ggplot}
 #'
 #' @import ggplot2
+#' @import sf
 #'
 #' @export
 plot_environment_exoenzymes <- function(object, exoenzymes, exoenzyme.names = NULL,
@@ -430,7 +432,7 @@ plot_environment_exoenzymes <- function(object, exoenzymes, exoenzyme.names = NU
   }
 
   # which layer to plot? By default: Baseplane
-  zvals <- sort(unique(object@environ@field.pts@coords[,3]))
+  zvals <- sort(unique(object@environ@field.pts[,3]))
   zvalOI <- zvals[1]
   if(layer < 0 | layer > (length(zvals)-1) | layer %% 1 != 0) {
     warning("Invalid layer. Plotting data for base plane (0).")
@@ -449,7 +451,7 @@ plot_environment_exoenzymes <- function(object, exoenzymes, exoenzyme.names = NU
   names(envDT) <- names(object@environ@exoenzymes)
   envDT <- envDT[, ..exoenzymes]
 
-  envDT <- cbind(object@environ@field.pts@coords, envDT)
+  envDT <- cbind(object@environ@field.pts[,], envDT)
   envDT <- envDT[z == zvalOI] # baseplane
   envDT <- melt(envDT, id.vars = c("x","y"), variable.name = "Exoenzyme",
                 value.name = "nM")
