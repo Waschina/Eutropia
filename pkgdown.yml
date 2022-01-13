@@ -1,0 +1,10 @@
+pandoc: 2.7.3
+pkgdown: 2.0.1
+pkgdown_sha: ~
+articles:
+  Crossfeeding: Crossfeeding.html
+last_built: 2022-01-13T13:53Z
+urls:
+  reference: https://waschina.github.io/Eutropia/reference
+  article: https://waschina.github.io/Eutropia/articles
+
