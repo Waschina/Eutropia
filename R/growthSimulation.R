@@ -69,9 +69,9 @@ is.growthSimulation <- function(x) inherits(x, "growthSimulation")
 #' Method to initialize a \link{growthSimulation} object
 #'
 #' @param universePolygon A two column matrix specifying the x and y
-#' coordinates of the polygon, that describes the growth environment boundaries.
-#' Alternatively, a character indicating one of the polygon presets can be
-#' provides (see details).
+#' coordinates of the polygon corners, that describe the growth environment
+#' boundaries. Alternatively, a character indicating one of the polygon presets
+#' can be provided (see details).
 #' @param gridFieldSize double. Distance between neighboring environments 3D
 #' mesh field elements (rhombic dodecahedrons) in \eqn{\mu}m.
 #' @param gridFieldLayers integer. z-dimension (height) as the number of layers
@@ -79,7 +79,7 @@ is.growthSimulation <- function(x) inherits(x, "growthSimulation")
 #' @param deltaTime double specifying the length of each time step for the
 #' simulation in hours.
 #' @param rMotion double. Maximum distance a cell can travel by means of
-#' Brownian motion per minute Default: 0.1 \eqn{\mu}m
+#' Brownian motion in \eqn{\mu} per minute. Default: 0.1 \eqn{\mu}m
 #'
 #' @return Object of class \link{growthSimulation}.
 #'
@@ -97,7 +97,7 @@ is.growthSimulation <- function(x) inherits(x, "growthSimulation")
 #' }
 #'
 #' @examples
-#' # Construction a square environment of dimensions 100\eqn{\mu}m x 100\eqn{\mu}m x 3\eqn{\mu}m
+#' # Construction a square environment of dimensions 100\eqn{\mu}m x 120\eqn{\mu}m x 3\eqn{\mu}m
 #' sim <- init_simulation(cbind(c(-50, -50, 50, 50),
 #'                              c(-60, 60, 60, -60)),
 #'                        gridFieldSize = 1, gridFieldLayers = 3)

@@ -50,7 +50,7 @@ compound is new).
 }
 \examples{
 sim <- init_simulation(cbind(c(-100, -100, 100, 100), c(-100, 100, 100, -100)),
-                       gridFieldSize = 2, gridFieldLayers = 5)
+                       gridFieldSize = 2, gridFieldLayers = 3)
 
 sim <- add_compounds(sim,
                      compounds = c("cpd00027_e0","cpd00029_e0","cpd00047_e0",

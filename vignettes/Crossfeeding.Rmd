@@ -1,10 +1,10 @@
 ---
-title: "Cross-feeding of two gastrointestinal bacteria"
+title: "Cross-feeding between two gastrointestinal bacteria"
 author: "Silvio Waschina"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Cross-feeding of two gastrointestinal bacteria}
+  %\VignetteIndexEntry{Cross-feeding between two gastrointestinal bacteria}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -21,24 +21,26 @@ library(Eutropia)
 ```
 
 ## Background
-The intestinal bacterium *Eubacterium rectale* is known to be able to use acetate as energy source under anaerobic conditions and thereby forms butyrate as end product (Rivère et al. (2015) Appl Envrion Microbiol). Acetate is a common fermentation end product in a number of different other intestinal bacteria, including Bifidobacteria (e.g. *Bifidobacterium longum*). In this tutorial, a co-culture experiment of both species is simulated in an aerobic environment that contains glucose as sole source of carbon an energy. It will be tested if acetate cross-feeding occurs and how the organism's affect each others population growth.
+The intestinal bacterium *Eubacterium rectale* is known to be able to use acetate as energy source under anaerobic conditions and forms butyrate as end product (Rivère et al. (2015) Appl Envrion Microbiol). Acetate is a common fermentation end product in a number of different other intestinal bacteria, including Bifidobacteria (e.g. *Bifidobacterium longum*). In this tutorial, a co-culture experiment of both species is simulated in an aerobic environment that contains glucose as sole source of carbon and energy. It will be tested if acetate cross-feeding occurs and how the organisms affect each others population growth.
 
 ## The setup
 
-As growth environment, a Petri dish-shaped growth area will be defined with a radius of 80 micro meters. The space for metabolite concentrations is rasterized by rhombic dodecahedrons of size 1 µm (distance between adjacent field centers). The chemical growth environment consists of 8 field layers in height.
+As growth environment, a Petri dish-shaped growth area will be defined with a radius of 80 micro meters. The space for metabolite concentrations is rasterized by rhombic dodecahedrons of size 1 µm (distance between adjacent field centers). The chemical growth environment consists of 6 field layers in height (i.e. the *z*-dimension).
 ```{r}
 # create simulation environment
 sim <- init_simulation("Petri_80",
                        gridFieldSize = 1,
-                       gridFieldLayers = 8)
+                       gridFieldLayers = 6)
 ```
 
 Next, we will read the models for both organisms and place 15 cells each in the growth environment.
 ```{r}
 # add organisms (15 cells of each as 'starter culture')
 models <- list()
-models[['eure']] <- readRDS(system.file("extdata", "eure.RDS", package="Eutropia"))
-models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS", package="Eutropia"))
+models[['eure']] <- readRDS(system.file("extdata", "eure.RDS",
+                                        package="Eutropia"))
+models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS",
+                                        package="Eutropia"))
 
 sim <- add_organism(sim, model = models[['eure']], name = "E. rectale",
                     ncells = 15, distribution.radius = 25,
@@ -55,7 +57,7 @@ plot_cells(sim,
            scalebar.color = "black")
 ```
 
-Now we have an simulation object with cells. What so far is missing are nutrients, or a growth medium.
+Now we have a simulation object with cells. Next we will add nutrients to the growth medium.
 
 ```{r}
 # Load a medium table
@@ -71,7 +73,7 @@ sim <- add_compounds(sim,
 
 ## The simulation
 
-We are all set to run our first simulation. It will run for 50 iterations (= 500 minutes simulated time). The simulation may take around 4 minutes 30 seconds to finish, because of the option `lim_time = 4.5`, while the last iteration is allowed to finish even if the time limit is exceeded. You can of course increase the time limit. The number of iterations depends on the systems performance with a here defined limit of 50 iterations.
+We are all set to run our first simulation. It will run either to a maximum of 50 iterations (= 500 minutes simulated time, option `niter`) or in maximum 4 minutes and 30 seconds (option `lim_time`). In the latter case, the last iteration is allowed to finish even if the time limit is exceeded.
 
 ```{r}
 sim <- run_simulation(sim, niter = 50, verbose = 1, lim_time = 4.5)
@@ -109,7 +111,7 @@ plot_growth(sim)
 plot_compounds(sim, compounds = c("cpd00029_e0","cpd00211_e0","cpd00159_e0"))
 ```
 
-The consumed and produced metabolites can be retrieved for the simulations.
+The consumed and produced metabolites (i.e. exchanges) can be retrieved for the simulation.
 ```{r}
 summary_exchanges(sim)
 ```
@@ -119,4 +121,4 @@ In addition, the same information can be retrieved for earlier iterations in the
 summary_exchanges(sim, iter = 10)
 ```
 
-The results should clearly show that, while acetate is produced by *B. longum*, it is consumed by *E. rectale*.
+The results should clearly show that acetate is produced by *B. longum* and consumed by *E. rectale*.

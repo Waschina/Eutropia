@@ -73,7 +73,7 @@ within the working directory. Tracked concentrations can also be plotted with
 Exoenzyme concentrations cannot be recorded in the current version.\cr
 
 Convergence is checked by calculating the ratio:
-\deqn{c := | a / min(a_{i-1},...,a_{i-5}) - 1 |}
+\deqn{c := | a_i / min(a_{i-1},...,a_{i-5}) - 1 |}
 \eqn{a_i} is the total biomass at iteration \eqn{i}. The simulation
 terminates if \eqn{c} is below `convergence.e`. Thus, one can expect
 longer simulations when reducing `convergence.e`.

@@ -122,9 +122,9 @@ models[['eure']] <- readRDS(system.file("extdata", "eure.RDS",
 models[['bilo']] <- readRDS(system.file("extdata", "bilo.RDS",
                             package="Eutropia"))
 
-sim <- init_simulation(cbind(c(-150, -150, 150, 150),
-                             c(-150, 150, 150, -150)),
-                       gridFieldSize = 1.75, gridFieldLayers = 5)
+sim <- init_simulation(cbind(c(-100, -100, 100, 100),
+                             c(-100, 100, 100, -100)),
+                       gridFieldSize = 1.75, gridFieldLayers = 3)
 
 sim <- add_organism(sim, model = models[["eure"]], name = "E. rectale",
                     ncells = 15, distribution.radius = 30)

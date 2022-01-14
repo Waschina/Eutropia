@@ -138,7 +138,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
     n.cores <- min(10, detectCores()-1)
 
   if(verbose >= 1)
-    cat("Initalising simulations using",n.cores,"CPU cores...\n")
+    message("Initalising simulation using ",n.cores," CPU cores.")
   cl <- makeCluster(n.cores)
 
   # Check if cplexAPI is installed
@@ -150,7 +150,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
   }
   # lpsolver <- "glpkAPI"; okcode <- 5 # DEBUG LINE -> force use of glpk
   if(verbose >= 1)
-    cat(paste0("LP-solver: ", lpsolver, "\n"))
+    message("LP-solver: ", lpsolver)
 
   pre_mod_list <- lapply(1:n.cores, function(x) { return(object@models) })
   fork_ids <- clusterApply(cl, pre_mod_list, fun = init_warm_mods,
@@ -206,7 +206,8 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
     elapT <- as.character(as_hms(elapT))
 
     if(verbose > 0)
-      cat("[",elapT,"] Simulation round ",simRound," \t(",ncells," cells, ",format(round(smass, digits = 2), nsmall = 2)," pg dBM)\n", sep ='')
+      message("[",elapT,"] Simulation round ",simRound," \t(",ncells," cells, ",
+              format(round(smass, digits = 2), nsmall = 2)," pg dBM)")
 
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -550,7 +551,7 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
       cellsum <- copy(object@cellDT[, list("mass" = round(sum(get("mass")), digits = 2)), by = "type"])
       cellsum[, "tmp.sum" := paste0(get("type"),"(",get("mass"),")")]
       cellsum <- paste(cellsum$tmp.sum, collapse = " ")
-      cat("           ",cellsum,"\n", sep ='')
+      message("           ",cellsum)
     }
 
 
