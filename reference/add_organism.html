@@ -17,14 +17,14 @@
       <span class="navbar-toggler-icon"></span>
     </button>
 
-    <div id="navbar" class="collapse navbar-collapse ms-2">
+    <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="active nav-item">
   <a class="nav-link" href="../reference/index.html">Reference</a>
 </li>
 <li class="nav-item dropdown">
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
-    <a class="dropdown-item" href="../articles/Crossfeeding.html">Cross-feeding of two gastrointestinal bacteria</a>
+    <a class="dropdown-item" href="../articles/Crossfeeding.html">Cross-feeding between two gastrointestinal bacteria</a>
   </div>
 </li>
       </ul><form class="form-inline my-2 my-lg-0" role="search">
@@ -174,9 +174,9 @@ numbers estimated by Sourjik and Berg (2001, PNAS) for <em>Escherichia coli</em>
 <span class="r-in"><span class="va">models</span><span class="op">[[</span><span class="st">'bilo'</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"bilo.RDS"</span>,</span>
 <span class="r-in">                            package<span class="op">=</span><span class="st">"Eutropia"</span><span class="op">)</span><span class="op">)</span></span>
 <span class="r-in"></span>
-<span class="r-in"><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="init_simulation.html">init_simulation</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">150</span>, <span class="op">-</span><span class="fl">150</span>, <span class="fl">150</span>, <span class="fl">150</span><span class="op">)</span>,</span>
-<span class="r-in">                             <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">150</span>, <span class="fl">150</span>, <span class="fl">150</span>, <span class="op">-</span><span class="fl">150</span><span class="op">)</span><span class="op">)</span>,</span>
-<span class="r-in">                       gridFieldSize <span class="op">=</span> <span class="fl">1.75</span>, gridFieldLayers <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="init_simulation.html">init_simulation</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">100</span>, <span class="op">-</span><span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">100</span><span class="op">)</span>,</span>
+<span class="r-in">                             <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">100</span>, <span class="op">-</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span>,</span>
+<span class="r-in">                       gridFieldSize <span class="op">=</span> <span class="fl">1.75</span>, gridFieldLayers <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span class="r-in"></span>
 <span class="r-in"><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu">add_organism</span><span class="op">(</span><span class="va">sim</span>, model <span class="op">=</span> <span class="va">models</span><span class="op">[[</span><span class="st">"eure"</span><span class="op">]</span><span class="op">]</span>, name <span class="op">=</span> <span class="st">"E. rectale"</span>,</span>
 <span class="r-in">                    ncells <span class="op">=</span> <span class="fl">15</span>, distribution.radius <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span>
@@ -197,7 +197,7 @@ numbers estimated by Sourjik and Berg (2001, PNAS) for <em>Escherichia coli</em>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
 </div>
 
     </footer></div>
