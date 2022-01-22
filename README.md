@@ -26,7 +26,7 @@ devtools::install_github("Waschina/Eutropia")
 ```
 If you have not installed `devtools` yet, just uncomment the first line.
 
-In addition, we recommend to install also the development version of the dependency `particles`, which is *Eutropia* uses as physics engine (e.g. cell collision).
+In addition, we recommend to install also the development version of the dependency `particles`, which *Eutropia* uses as physics engine (e.g. cell collision).
 
 ```R
 devtools::install_github("thomasp85/particles")
