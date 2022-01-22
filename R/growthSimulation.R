@@ -265,6 +265,7 @@ universe_polygon_preset <- function(universePolygon) {
 #' in metabolite sensing. Default: 1.2
 #' @param open.bounds Numeric value that is used to reset lower bounds of
 #' exchange reactions, which have a current lower bound of 0. See Details.
+#' @param color Color of organism in visualizations.
 #'
 #' @details
 #' Genome-scale metabolic models usually come pre-constraint, which means that
@@ -339,7 +340,8 @@ add_organism <- function(object,
                          chemotaxisStrength = 0.01,
                          chemotaxisHillKA   = 0.1,
                          chemotaxisHillCoef = 1.2,
-                         open.bounds = NULL) {
+                         open.bounds = NULL,
+                         color = NULL) {
   # sanity checks
   if(!is.growthSimulation(object))
     stop("'Object' not of class 'growthSimulation'.")
@@ -373,6 +375,19 @@ add_organism <- function(object,
       chemotaxisHillCoef <- rep(chemotaxisHillCoef, length(chemotaxisCompound))
   }
 
+  # set color automatically if NULL
+  if(is.null(color)) {
+    default.colors <- c("#D55E00","#56B4E9","#F0E442","#009E73","#0072B2",
+                        "#E69F00","#CC79A7","#DEDEDE")
+    colors.in.use <- unlist(lapply(object@models, function(x) x@color))
+    color <- default.colors[!(default.colors %in% colors.in.use)]
+    if(length(color) == 0) {
+      color <- "#333333"
+      warnings("Eutropia ran out of distinct and colorblind-friendly colors. Assigning gray instead.")
+    } else {
+      color <- color[1]
+    }
+  }
 
   # init new organism object
   object@models[[name]] <- new("Organism",
@@ -388,7 +403,8 @@ add_organism <- function(object,
                                chemotaxisHillKA = chemotaxisHillKA,
                                chemotaxisHillCoef = chemotaxisHillCoef,
 
-                               open.bounds = open.bounds)
+                               open.bounds = open.bounds,
+                               color = color)
 
   #if not provided -> assign cell positions:
   if(is.null(coords)) {

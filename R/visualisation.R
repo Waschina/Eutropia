@@ -10,8 +10,10 @@
 #' @param ylim Numeric vector of length 2, specifying the y-range to be displayed.
 #' @param iter Positive integer number of the simulation step/iteration to plot
 #' the cell distribution. If NULL, current distribution is displayed.
-#' @param scalebar.color Color of the scale bar and its annotation. Default: "white".
-#' @param incl.timestamp Boolean indicating whether a timestamp should be
+#' @param scalebar.color Color of the scale bar and its annotation. Default:
+#' "white".
+#' @param background.color Color of the growth environment background.
+#' @param incl.timestamp Boolean indicating whether a time stamp should be
 #' included in the plot. Default: TRUE
 #' @param legend.position The position of legends ("none", "left", "right",
 #' "bottom", "top", or two-element numeric vector), as handled in
@@ -26,8 +28,9 @@
 #'
 #' @export
 plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
-                       scalebar.color = "white", incl.timestamp = TRUE,
-                       legend.position = "bottom", plot.title = NULL) {
+                       scalebar.color = "white", background.color = "black",
+                       incl.timestamp = TRUE, legend.position = "bottom",
+                       plot.title = NULL) {
   if(object@n_rounds == 0 & !is.null(iter)) {
     if(iter != 0)
       warning("Simulation did not run yet. Showing initial simulation status.")
@@ -77,18 +80,17 @@ plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
   bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd * 2.5, bar_wd) # e.g. 10 -> 25
   bar_wd <- ifelse(bar_wd/x_span < 0.05, bar_wd <- bar_wd / 2.5 * 5, bar_wd) # e.g. 10 -> 50
 
-  # get coordinated to draw growth polygon fences
+  # get coordinates to draw growth polygon fences
   kidt <- data.table(object@universePolygon)
   colnames(kidt) <- c("x","y")
 
-  n_types <- length(unique(cellposDT$type))
-  col_code <- "Set1"
-  if(n_types > 8)
-    col_code <- "Set3"
+  # get colors
+  colors <- unlist(lapply(object@models, function(x) x@color))
+  colors <- colors[unique(cellposDT$type)]
 
   p <- ggplot(cellposDT, aes(x0 = x,y0 = y)) +
     geom_polygon(data = kidt, mapping = aes(x = x, y = y),
-                 col = "#333333", fill = "black", linetype = "solid") +
+                 col = "#333333", fill = background.color, linetype = "solid") +
     geom_circle(aes(r = size/2, fill = type, col = type), alpha = 0.3,
                 show.legend = T, key_glyph = draw_key_point) +
     coord_equal(xlim = xlim, ylim = ylim) +
@@ -101,13 +103,14 @@ plot_cells <- function(object, xlim = NULL, ylim = NULL, iter = NULL,
              y = ylim[1]+y_exp_fac,
              label = paste0(bar_wd," \u00B5m"),
              color = scalebar.color, hjust = 0.5, vjust = -1, size = 2.5) +
-    ggtitle(plot.title)
+    ggtitle(plot.title) +
+    scale_color_manual(values = colors) + scale_fill_manual(values = colors)
 
   # use nicer brewer colors if here are not to many distinct cell types
   # Otherwise: using ggplot defaults
-  if(n_types <= 12) {
-    p <- p + scale_color_brewer(palette = col_code)
-  }
+  # if(n_types <= 12) {
+  #   p <- p + scale_color_brewer(palette = col_code)
+  # }
 
   p <- p +
     scale_y_continuous(sec.axis = sec_axis(~ .)) + scale_x_continuous(sec.axis = sec_axis(~ .)) +
@@ -536,10 +539,14 @@ plot_growth <- function(object, tlim = NULL, ylim = NULL) {
   dt_cellsg <- dt_cellsg[, .(mass = sum(mass)), by = .(iteration, type)]
   dt_cellsg[, time := iteration * object@deltaTime]
 
+  # get colors
+  colors <- unlist(lapply(object@models, function(x) x@color))
+  colors <- colors[unique(dt_cellsg$type)]
+
   p_growth <- ggplot(dt_cellsg, aes(time, mass, col = type, group = type)) +
     geom_line() +
     #geom_point(cex = 0.5) +
-    scale_color_brewer(palette = "Set1") +
+    scale_color_manual(values = colors) +
     labs(x = "Time [hr]", y = "Mass [pg]",col = "Organism") +
     scale_x_continuous(expand = c(0,0)) +
     coord_cartesian(xlim = tlim, ylim = ylim) +

@@ -24,7 +24,8 @@ add_organism(
   chemotaxisStrength = 0.01,
   chemotaxisHillKA = 0.1,
   chemotaxisHillCoef = 1.2,
-  open.bounds = NULL
+  open.bounds = NULL,
+  color = NULL
 )
 }
 \arguments{
@@ -87,6 +88,8 @@ in metabolite sensing. Default: 1.2}
 
 \item{open.bounds}{Numeric value that is used to reset lower bounds of
 exchange reactions, which have a current lower bound of 0. See Details.}
+
+\item{color}{Color of organism in visualizations.}
 }
 \value{
 Object of class \link{growthSimulation}.

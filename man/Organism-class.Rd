@@ -47,5 +47,7 @@ network model.}
 
 \item{\code{exoenzymes.prod}}{Numeric vector of the production rates of exoenzymes.
 Unit: nmol / gDW / hr (nmol Enzyme per gDW cells per hr)}
+
+\item{\code{color}}{Color of organism in visualizations.}
 }}
 

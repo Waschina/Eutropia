@@ -29,6 +29,7 @@
 #' @slot exoenzymes Character vector of IDs of the organism's exoenzymes
 #' @slot exoenzymes.prod Numeric vector of the production rates of exoenzymes.
 #' Unit: nmol / gDW / hr (nmol Enzyme per gDW cells per hr)
+#' @slot color Color of organism in visualizations.
 setClass("Organism",
 
          slots = c(
@@ -51,7 +52,10 @@ setClass("Organism",
 
            # Exoenzymes
            exoenzymes = "character", # vector with Exoenzyme IDs
-           exoenzymes.prod = "numeric" # Vector for production rates in [nmol/gDW/hr]
+           exoenzymes.prod = "numeric", # Vector for production rates in [nmol/gDW/hr]
+
+           # Aestetics
+           color = "character"
          )
 )
 
@@ -71,6 +75,7 @@ setMethod("initialize", "Organism",
                    chemotaxisHillKA,
                    chemotaxisHillCoef,
                    open.bounds,
+                   color,
                    ...) {
             .Object <- callNextMethod(.Object, ...)
 
@@ -88,6 +93,7 @@ setMethod("initialize", "Organism",
             .Object@chemotaxisStrength <- chemotaxisStrength
             .Object@chemotaxisHillKA   <- chemotaxisHillKA
             .Object@chemotaxisHillCoef <- chemotaxisHillCoef
+            .Object@color <- color
 
             .Object@exoenzymes <- character(0)
             .Object@exoenzymes.prod <- double(0)
