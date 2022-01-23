@@ -142,13 +142,13 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
   cl <- makeCluster(n.cores)
 
   # Check if cplexAPI is installed
-  lpsolver <- "glpkAPI"
-  okcode   <- 5
-  if("cplexAPI" %in% rownames(installed.packages())) {
-    lpsolver <- "cplexAPI"
-    okcode   <- 1
-  }
-  # lpsolver <- "glpkAPI"; okcode <- 5 # DEBUG LINE -> force use of glpk
+  lpsolver <- SYBIL_SETTINGS("SOLVER")
+  okcode <- 5 # GLPK
+  if(lpsolver == "cplexAPI")
+    okcode <- 1
+  if(lpsolver == "clpAPI")
+    okcode <- 0
+
   if(verbose >= 1)
     message("LP-solver: ", lpsolver)
 
