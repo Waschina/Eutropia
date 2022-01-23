@@ -177,18 +177,11 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
   BM_converged <- F
   last_smass  <- rep(NA_real_, n_conv)
 
-  #ram_usage <<- c(mem_used())
   # while loop that checks termination criteria before starting a new round
   while(j <= niter & difftime(Sys.time(), t_start, units = "mins") < lim_time & nrow(object@cellDT) < lim_cells & !BM_converged) {
     simRound <- object@n_rounds + 1
 
-    # # give workers the current metabolite concentrations
-    # fork_conc <- object@environ@concentrations
-    # updateConc <- clusterApply(cl, 1:n.cores, function(fork_conc) {fieldConc <<- fork_conc; return(NULL)})
-    # rm(updateConc)
-
     # get the cells' info
-    #cellDT <- copy(object@cellDT)
     ncells <- nrow(object@cellDT)
     smass  <- sum(object@cellDT$mass)
 
@@ -593,7 +586,7 @@ init_warm_mods <- function(x, lpsolver, okcode) {
   return(NULL)
 }
 
-#' @import sp
+#' @import sf
 #' @import data.table
 get_cellFieldEnv_ex <- function(x) {
   icell_x    <- x$x
@@ -601,11 +594,21 @@ get_cellFieldEnv_ex <- function(x) {
   icell_size <- x$size
   scv_dist   <- x$scvr
 
-  gsp  <- SpatialPoints(x$gridLC[,list("x"=get("x"),"y"=get("y"),"z"=get("z"))])
+  # centroids of cell neighbor fields
+  #gsp  <- SpatialPoints(x$gridLC[,list("x"=get("x"),"y"=get("y"),"z"=get("z"))])
+  gsp <- st_multipoint(as.matrix(x$gridLC[,list("x"=get("x"),
+                                                "y"=get("y"),
+                                                "z"=get("z"))]))
+  gsp <- st_cast(st_sfc(gsp), "POINT")
 
-  csp <- SpatialPoints(matrix(c(icell_x, icell_y, 0), ncol = 3))
-  q.c.dist <- spDists(gsp, csp)[,1]
+  # position of cell
+  #csp <- SpatialPoints(matrix(c(icell_x, icell_y, 0), ncol = 3))
+  csp <- st_point(c(icell_x, icell_y, 0))
 
+  # distance of cell to neighboring fields
+  q.c.dist <- st_distance(gsp, csp)[,1]
+
+  # filter for fields that are in scavenge range
   qry.env <- which(q.c.dist <= (icell_size/2 + scv_dist))
 
   #qry.dist <- gDistance(gsp[qry.env,], csp, byid = T)[1,]

@@ -14,7 +14,7 @@ Agent-based metabolic modelling of microbial communities in time and continuous 
 - Extracellular enzymes
 - Nutrient regimes
 - Chemotaxis (attracting and repelling)
-- Direct calculations of community assortment and segragation (see e.g. [Yanni *et al. (2015) Current Biology*](https://doi.org/10.1016/j.cub.2019.03.068))
+- Direct calculations of community assortment and segregation (see e.g. [Yanni *et al. (2015) Current Biology*](https://doi.org/10.1016/j.cub.2019.03.068))
 
 ### Installation
 

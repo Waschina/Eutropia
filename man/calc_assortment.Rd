@@ -30,7 +30,7 @@ maintaining the cell positions and community-wide cell type counts.
 }
 \description{
 This functions calculates cell-wise and mean cell type
-segration and assortment values as suggested by Yanni et al. (2019) Current
+segregation and assortment values as suggested by Yanni et al. (2019) Current
 Biology.
 }
 \details{

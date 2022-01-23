@@ -1,7 +1,7 @@
 #' @title Calculate spatial segregation and assortment
 #'
 #' @description This functions calculates cell-wise and mean cell type
-#' segration and assortment values as suggested by Yanni et al. (2019) Current
+#' segregation and assortment values as suggested by Yanni et al. (2019) Current
 #' Biology.
 #'
 #' @param object S4-object of type \code{growthSimulation}.
