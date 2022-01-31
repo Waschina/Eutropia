@@ -3,7 +3,7 @@ pkgdown: 2.0.2
 pkgdown_sha: ~
 articles:
   Crossfeeding: Crossfeeding.html
-last_built: 2022-01-23T15:18Z
+last_built: 2022-01-31T15:27Z
 urls:
   reference: https://waschina.github.io/Eutropia/reference
   article: https://waschina.github.io/Eutropia/articles
