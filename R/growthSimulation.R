@@ -487,6 +487,7 @@ add_organism <- function(object,
   object@cellDT <- rbind(object@cellDT, newcells)
 
   # add compounds, for which there are exchange reactions in at least one model
+  # and which are not yet part of the environment
   mod <- object@models[[name]]@mod
 
   dt_exr <- data.table(id = mod@react_id,
@@ -500,11 +501,15 @@ add_organism <- function(object,
   dt_exr[, name := gsub(" Exchange$","",name)]
   dt_exr[, name := gsub(" exchange$","",name)]
 
-  object <- add_compounds(object,
-                          compounds = dt_exr$id,
-                          concentrations = rep(0, nrow(dt_exr)),
-                          compound.names = dt_exr$name,
-                          is.constant = rep(FALSE, nrow(dt_exr)))
+  dt_exr <- dt_exr[!(id %in% object@environ@compounds)] # only new compounds should be added
+
+  if(nrow(dt_exr) > 0) {
+    object <- add_compounds(object,
+                            compounds = dt_exr$id,
+                            concentrations = rep(0, nrow(dt_exr)),
+                            compound.names = dt_exr$name,
+                            is.constant = rep(FALSE, nrow(dt_exr)))
+  }
 
   return(object)
 }
