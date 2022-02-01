@@ -377,10 +377,10 @@ run_simulation <- function(object, niter, verbose = 1, lim_cells = 1e5,
     if(verbose > 1)
       cat("... diffusion of compounds\n", sep ='')
     #saveRDS(object@environ@concentrations, file = paste0("sim_conc_",object@n_rounds,".RDS"))
-    object@environ <- diffuse_compounds(object@environ,
-                                        deltaTime = object@deltaTime,
-                                        cl = cl,
-                                        n.cores = n.cores)
+    object@environ <- diffuse_compoundsPar(object@environ,
+                                           deltaTime = object@deltaTime,
+                                           cl = cl,
+                                           n.cores = n.cores)
 
     # - - - - - - - - - #
     # (3.5) Chemotaxis  #

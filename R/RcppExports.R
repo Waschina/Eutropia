@@ -5,7 +5,7 @@ diffChange <- function(adjmat, nneighbors, conc, niter) {
     .Call(`_Eutropia_diffChange`, adjmat, nneighbors, conc, niter)
 }
 
-diffChangeVec <- function(adjmat, nneighbors, conc, niter) {
-    .Call(`_Eutropia_diffChangeVec`, adjmat, nneighbors, conc, niter)
+diffChangePar <- function(adjmat, nneighbors, conc, niter, indvar, ncores) {
+    .Call(`_Eutropia_diffChangePar`, adjmat, nneighbors, conc, niter, indvar, ncores)
 }
 

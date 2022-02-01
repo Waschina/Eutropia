@@ -25,24 +25,26 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// diffChangeVec
-arma::mat diffChangeVec(arma::mat adjmat, arma::mat nneighbors, arma::Row<double> conc, int niter);
-RcppExport SEXP _Eutropia_diffChangeVec(SEXP adjmatSEXP, SEXP nneighborsSEXP, SEXP concSEXP, SEXP niterSEXP) {
+// diffChangePar
+arma::mat diffChangePar(arma::Mat<int> adjmat, arma::Mat<int> nneighbors, arma::Mat<double> conc, arma::Col<int> niter, arma::Col<int> indvar, int ncores);
+RcppExport SEXP _Eutropia_diffChangePar(SEXP adjmatSEXP, SEXP nneighborsSEXP, SEXP concSEXP, SEXP niterSEXP, SEXP indvarSEXP, SEXP ncoresSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type adjmat(adjmatSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type nneighbors(nneighborsSEXP);
-    Rcpp::traits::input_parameter< arma::Row<double> >::type conc(concSEXP);
-    Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
-    rcpp_result_gen = Rcpp::wrap(diffChangeVec(adjmat, nneighbors, conc, niter));
+    Rcpp::traits::input_parameter< arma::Mat<int> >::type adjmat(adjmatSEXP);
+    Rcpp::traits::input_parameter< arma::Mat<int> >::type nneighbors(nneighborsSEXP);
+    Rcpp::traits::input_parameter< arma::Mat<double> >::type conc(concSEXP);
+    Rcpp::traits::input_parameter< arma::Col<int> >::type niter(niterSEXP);
+    Rcpp::traits::input_parameter< arma::Col<int> >::type indvar(indvarSEXP);
+    Rcpp::traits::input_parameter< int >::type ncores(ncoresSEXP);
+    rcpp_result_gen = Rcpp::wrap(diffChangePar(adjmat, nneighbors, conc, niter, indvar, ncores));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
     {"_Eutropia_diffChange", (DL_FUNC) &_Eutropia_diffChange, 4},
-    {"_Eutropia_diffChangeVec", (DL_FUNC) &_Eutropia_diffChangeVec, 4},
+    {"_Eutropia_diffChangePar", (DL_FUNC) &_Eutropia_diffChangePar, 6},
     {NULL, NULL, 0}
 };
 

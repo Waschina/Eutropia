@@ -359,3 +359,59 @@ indDiff_worker <- function(x) {
   res <- diffChange(x$mat.in, x$mat.out, x$conc, x$n_iter)
   return(res)
 }
+
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~#
+# Compound diffusion   #
+# with openMP in c++11 #
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~#
+diffuse_compoundsPar <- function(object, deltaTime, cl, n.cores) {
+
+  # - - - - - #
+  # Compounds #
+  # - - - - - #
+  ind_variable <- which(apply(object@concentrations,2,sd) > 0 & object@compound.D > 0 & object@conc.isConstant == FALSE)
+
+
+
+  # no variable compounds -> no need for diffusion
+  if(length(ind_variable) > 0) {
+
+    # calculate number of steps required per compound
+    diff_shere_surface_area <- object@compound.D[ind_variable] * 60 * 60 * deltaTime # surface area in micro-m^2 after one iteration step
+    diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
+    diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
+
+    # VIA RccpArmadillo + OpenMP
+    object@concentrations <- diffChangePar(object@mat.in,
+                                           object@mat.out,
+                                           as.matrix(object@concentrations),
+                                           diffusion.niter,
+                                           ind_variable,
+                                           n.cores)
+
+  }
+
+  # - - - - - - #
+  # Exoenzymes  #
+  # - - - - - - #
+  if(length(object@exoenzymes) > 0) {
+    exec.D <- unlist(lapply(object@exoenzymes, function(x) x@D))
+    ind_variable <- which(apply(object@exoenzymes.conc,2,sd) > 0 & exec.D > 0)
+
+    if(length(ind_variable) > 0) {
+      diff_shere_surface_area <- exec.D[ind_variable] * 60 * 60 * deltaTime # surface area in micro-m^2 after one iteration step
+      diff_shere_radius       <- sqrt(diff_shere_surface_area / (4*pi))
+      diffusion.niter         <- ceiling(diff_shere_radius/object@fieldSize)
+
+      object@exoenzymes.conc <- diffChangePar(object@mat.in, object@mat.out,
+                                              as.matrix(object@exoenzymes.conc),
+                                              diffusion.niter,
+                                              ind_variable,
+                                              min(n.cores,
+                                                  length(ind_variable)))
+
+    }
+  }
+
+  return(object)
+}
