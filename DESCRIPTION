@@ -2,8 +2,18 @@ Package: Eutropia
 Type: Package
 Title: Agent-based modelling of microbial communities in time and continuous µ-meter-scale space
 Version: 0.1.7
-Author: Silvio Waschina
-Maintainer: Silvio Waschina <s.waschina@nutrinf.uni-kiel.de>
+Authors@R:
+    c(person(given = "Silvio",
+             family = "Waschina",
+             role = c("aut","cre"),
+             email = "s.waschina@nutrinf.uni-kiel.de",
+             comment = c(ORCID = "0000-0002-6290-3593")),
+      person(given = "Sina",
+             family = "Zimmermann",
+             role = "aut"),
+      person(given = "Svenja",
+             family = "Busche",
+             role = "aut"))
 Description: Cell agent-based modelling with FBA metabolic flux predictions 
     for each agent. The packages allows the handling of complex polygons (also non-
     convex) as growth envrionment, exoenzymes, nutrient regimes, and chemotaxis.
@@ -40,3 +50,4 @@ Imports:
     tidygraph
 NeedsCompilation: yes
 URL: https://waschina.github.io/Eutropia
+BugReports: https://github.com/Waschina/Eutropia/issues
