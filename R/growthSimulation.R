@@ -358,11 +358,11 @@ add_organism <- function(object,
     chemotaxisHillCoef <- double(0)
   } else {
     if(!(length(chemotaxisStrength) %in% c(1,length(chemotaxisCompound))))
-      stop("'chemotaxisStrength' should be the samle length as chemotaxisCompound or 1.")
+      stop("'chemotaxisStrength' should be the same length as chemotaxisCompound or 1.")
     if(!(length(chemotaxisHillKA) %in% c(1,length(chemotaxisCompound))))
-      stop("'chemotaxisHillKA' should be the samle length as chemotaxisCompound or 1.")
+      stop("'chemotaxisHillKA' should be the same length as chemotaxisCompound or 1.")
     if(!(length(chemotaxisHillCoef) %in% c(1,length(chemotaxisCompound))))
-      stop("'chemotaxisHillCoef' should be the samle length as chemotaxisCompound or 1.")
+      stop("'chemotaxisHillCoef' should be the same length as chemotaxisCompound or 1.")
 
     if(any(chemotaxisHillKA <= 0) | any(chemotaxisHillCoef <= 0))
       stop("'chemotaxisHillKA' and 'chemotaxisHillCoef' must be non-zero positive numbers.")
