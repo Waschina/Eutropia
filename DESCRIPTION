@@ -22,7 +22,7 @@ Depends:
     data.table (>= 1.13.4),
     sybil (>= 2.1.5),
     hms (>= 0.5.3) 
-License: file LICENSE.md
+License: GPL (>= 3) + file LICENSE
 SystemRequirements: C++11
 Encoding: UTF-8
 LazyData: true
