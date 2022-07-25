@@ -30,7 +30,7 @@ Suggests:
     knitr,
     rmarkdown
 VignetteBuilder: knitr
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.0
 LinkingTo: 
     Rcpp,
     RcppArmadillo
@@ -46,8 +46,10 @@ Imports:
     methods,
     glpkAPI,
     sf,
-    particles (>= 0.2.2),
+    particles,
     tidygraph
+Remotes: 
+    Waschina/particles
 NeedsCompilation: yes
 URL: https://waschina.github.io/Eutropia
 BugReports: https://github.com/Waschina/Eutropia/issues
