@@ -578,7 +578,7 @@ setMethod(f          = "show",
 #' More options are planned.
 #'
 #' If no compound names are provided, the current names are kept (if compound
-#' is already present) or the the compound ID is also used as name (in case the
+#' is already present) or the compound ID is also used as name (in case the
 #' compound is new).
 #'
 #' @return Return a S4-object of type \link{growthSimulation}.
@@ -672,11 +672,166 @@ add_compounds <- function(object, compounds, concentrations,
       if(!is.na(compound.names[i])) {
         if(compound.names[i] %in% object@environ@compound.names) {
           warning(paste0("Compound with name '",compound.names[i],"' already exists. Replacing with '",compounds[i],"'."))
+          compound.names[i] <- compounds[i]
         }
         object@environ@compound.names <- c(object@environ@compound.names, compound.names[i])
       } else {
         object@environ@compound.names <- c(object@environ@compound.names, compounds[i])
       }
+    }
+  }
+
+  return(object)
+}
+
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+# Add compound gradient         #
+# ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ #
+#' @title Add compounds to the growth environment in a gradient
+#'
+#' @description The function can be used to add substances to the growth
+#' environment where the compound is distribution in a concentration gradient.
+#'
+#' @param object S4-object of type \link{growthSimulation}.
+#' @param compound Character with the compound ID of substance to add
+#' to the environment in a gradient. Compound ID should correspond to the
+#' models' exchange reaction ID ("EX_[cpdid]"), without the "EX_" prefix.
+#' @param p1 Numeric vector of length 2 or 3 defining the xy(z)-coordinates of
+#' the first gradient reference point. See details.
+#' @param p2 Numeric vector of length 2 or 3 defining the xy(z)-coordinates of
+#' the second gradient reference point. See details.
+#' @param c1 Numeric value with the concentration of the compound at 'p1'.
+#' Values in mM.
+#' @param c2 Numeric value with the concentration of the compound at 'p2'.
+#' Values in mM.
+#' @param gradient.dir Either "radial", "linear", or "linear_mirrored". See
+#' details.
+#' @param compound.name Character with the compound name.
+#' @param is.constant Logical defining if the compound should remain constant
+#' over time despite of potential uptake or production by cells.
+#' @param compound.D Numeric value with the compound's diffusion coefficient
+#' in \eqn{\mu}m^2/s. Default: 75
+#'
+#' @details If only xy-coordinated are provided the z-coordinate is assumed to
+#' be 0.
+#'
+#' If ''gradient.dir' is set to "linear", any point that is in the
+#' opposite direction of the gradient will get the concentration c1. If
+#' "linear_mirrored", the concentration gradient is mirrored at the plane that
+#' is defined by p1 and the p1-p2 as normal vector.
+#'
+#' If the compound is already present, old and new concentrations are added.
+#'
+#' If no compound names are provided, the current names are kept (if compound
+#' is already present) or the the compound ID is also used as name (in case the
+#' compound is new).
+#'
+#'
+#' @return Return a S4-object of type \link{growthSimulation}.
+#'
+#' @examples
+#' sim <- init_simulation(cbind(c(-70, -70, 70, 70), c(-45, 45, 45, -45)),
+#' gridFieldSize = 2, gridFieldLayers = 3)
+#' sim <- add_compound_gradient(sim,
+#'                              compound = "cpd00027_e0",
+#'                              p1 = c(-60,33), p2 = c(60,-40),
+#'                              c1 = 25, c2 = 0,
+#'                              compound.name = "D-Glucose")
+#' sim <- add_compound_gradient(sim,
+#'                              compound = "cpd00036_e0",
+#'                              p1 = c(60,-20), p2 = c(50,60),
+#'                              c1 = 27, c2 = 0,
+#'                              gradient.dir = "linear",
+#'                              compound.name = "Succinate")
+#'
+#' plot_environment(sim, c("cpd00027_e0","cpd00036_e0"), incl.timestamp = FALSE)
+#' @import sf
+#' @export
+add_compound_gradient <- function(object, compound, p1, p2, c1, c2,
+                                  gradient.dir = "radial",
+                                  compound.name = NULL,
+                                  is.constant = FALSE,
+                                  compound.D  = 75) {
+  # Sanity checks
+  if(!is.growthSimulation(object))
+    stop("'Object' not of class 'growthSimulation'.")
+
+  # grad dir
+  if(!(gradient.dir %in% c("radial","linear","linear_mirrored")))
+    stop("gradient.dir should be \"radial\", \"linear\", or \"linear_mirrored\".")
+
+  # Both coordinates should have numeric length of 2 or 3.
+  if(!(length(p1) %in% c(2,3) & length(p2) %in% c(2,3))) {
+    stop("Coordinates p1 and p2 should each be vectors of length 2 (xy) or 3 (xyz).")
+  }
+  if(length(p1) == 2)
+    p1 <- c(p1,0)
+  if(length(p2) == 2)
+    p2 <- c(p2,0)
+
+  # p1 and p2 same?
+  if(all(p1 == p2))
+    stop("'p1' and 'p2' cannot be identical for defining a gradient.")
+
+  # Calculate concentration gradient
+  p1sf <- st_point(p1)
+  p2sf <- st_point(p2)
+  d <- st_distance(p1sf, p2sf)[1,1]
+  if(gradient.dir == "radial") {
+    envp <- st_cast(st_sfc(object@environ@field.pts), "POINT")
+    env_dist <- st_distance(envp, p1sf)
+  }
+  if(grepl("^linear",gradient.dir)) {
+    envp <- as.matrix(object@environ@field.pts)
+
+    norm_vec <- p2-p1
+
+    env_dist <- norm_vec[1]*(envp[,1] - p1[1]) + norm_vec[2]*(envp[,2] - p1[2]) + norm_vec[3]*(envp[,3] - p1[3])
+    #env_dist <- norm_vec[1]*envp[,1] + norm_vec[2]*envp[,2] + norm_vec[3]*envp[,3]
+    #env_dist <- env_dist + norm_vec[1]*p1[1] + norm_vec[2]*p1[2] + norm_vec[3]*p1[3]
+    env_dist <- env_dist / sqrt(sum(norm_vec^2))
+
+    if(grepl("mirrored$", gradient.dir)) {
+      env_dist <- abs(env_dist)
+    } else {
+      env_dist <- ifelse(env_dist < 0, 0, env_dist)
+    }
+  }
+
+  # translate distances to concentrations
+  grad_func <- function(x) {
+    m <- (c2 - c1) / d
+    y <- x * m + c1
+    y <- ifelse(y < min(c(c1,c2)), min(c(c1,c2)), y)
+    y <- ifelse(y > max(c(c1,c2)), max(c(c1,c2)), y)
+  }
+  concadd <- grad_func(env_dist)
+
+  # Add new concentration to growth environment
+  if(compound %in% object@environ@compounds) {
+    # Metabolite is already present in environment
+    c_ind <- which(object@environ@compounds == compound)
+    object@environ@concentrations[, c_ind] <- object@environ@concentrations[, c_ind] + concadd
+    object@environ@conc.isConstant[c_ind]  <- is.constant
+    object@environ@compound.D[c_ind]       <- compound.D
+    if(!is.null(compound.name) && !is.na(compound.name))
+      object@environ@compound.names[c_ind] <- compound.name
+
+  } else {
+    # Metabolite is new
+    object@environ@compounds       <- c(object@environ@compounds, compound)
+    object@environ@concentrations  <- cbind(object@environ@concentrations,
+                                            matrix(concadd, ncol = 1, nrow = object@environ@nfields))
+    object@environ@conc.isConstant <- c(object@environ@conc.isConstant, is.constant)
+    object@environ@compound.D      <- c(object@environ@compound.D, compound.D)
+    if(!is.na(compound.name)) {
+      if(compound.name %in% object@environ@compound.names) {
+        warning(paste0("Compound with name '",compound.name,"' already exists. Replacing with '",compound,"'."))
+        compound.name <- compound
+      }
+      object@environ@compound.names <- c(object@environ@compound.names, compound.name)
+    } else {
+      object@environ@compound.names <- c(object@environ@compound.names, compound)
     }
   }
 

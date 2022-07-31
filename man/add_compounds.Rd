@@ -45,7 +45,7 @@ If the compound is already present, old and new concentrations are added.
 More options are planned.
 
 If no compound names are provided, the current names are kept (if compound
-is already present) or the the compound ID is also used as name (in case the
+is already present) or the compound ID is also used as name (in case the
 compound is new).
 }
 \examples{
