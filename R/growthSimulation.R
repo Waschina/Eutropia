@@ -581,6 +581,10 @@ setMethod(f          = "show",
 #' is already present) or the compound ID is also used as name (in case the
 #' compound is new).
 #'
+#' You can also define "Inf" for the compound diffusion rates in 'compound.D'.
+#' This has the effect, that the compound will be evenly distributed across the
+#' whole growth environment again at every iteration during the simulation.
+#'
 #' @return Return a S4-object of type \link{growthSimulation}.
 #'
 #' @examples

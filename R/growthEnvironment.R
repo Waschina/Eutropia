@@ -370,8 +370,8 @@ diffuse_compoundsPar <- function(object, deltaTime, cl, n.cores) {
   # Compounds #
   # - - - - - #
   ind_variable <- which(apply(object@concentrations,2,sd) > 0 & object@compound.D > 0 & object@conc.isConstant == FALSE)
-
-
+  ind_infD     <- ind_variable[is.infinite(object@compound.D[ind_variable])]
+  ind_variable <- ind_variable[!(ind_variable %in% ind_infD)]
 
   # no variable compounds -> no need for diffusion
   if(length(ind_variable) > 0) {
@@ -390,6 +390,15 @@ diffuse_compoundsPar <- function(object, deltaTime, cl, n.cores) {
                                            n.cores)
 
   }
+  if(length(ind_infD) > 0) {
+    if(length(ind_infD) == 1) {
+      object@concentrations[,ind_infD] <- mean(object@concentrations[,ind_infD])
+    } else {
+      object@concentrations[,ind_infD] <- apply(object@concentrations[,ind_infD],
+                                                2,
+                                                function(x) rep(mean(x), length(x)))
+    }
+  }
 
   # - - - - - - #
   # Exoenzymes  #
@@ -397,6 +406,8 @@ diffuse_compoundsPar <- function(object, deltaTime, cl, n.cores) {
   if(length(object@exoenzymes) > 0) {
     exec.D <- unlist(lapply(object@exoenzymes, function(x) x@D))
     ind_variable <- which(apply(object@exoenzymes.conc,2,sd) > 0 & exec.D > 0)
+    ind_infD     <- ind_variable[is.infinite(exec.D[ind_variable])]
+    ind_variable <- ind_variable[!(ind_variable %in% ind_infD)]
 
     if(length(ind_variable) > 0) {
       diff_shere_surface_area <- exec.D[ind_variable] * 60 * 60 * deltaTime # surface area in micro-m^2 after one iteration step
@@ -410,6 +421,15 @@ diffuse_compoundsPar <- function(object, deltaTime, cl, n.cores) {
                                               min(n.cores,
                                                   length(ind_variable)))
 
+    }
+    if(length(ind_infD) > 0) {
+      if(length(ind_infD) == 1) {
+        object@exoenzymes.conc[,ind_infD] <- mean(object@exoenzymes.conc[,ind_infD])
+      } else {
+        object@exoenzymes.conc[,ind_infD] <- apply(object@exoenzymes.conc[,ind_infD],
+                                                   2,
+                                                   function(x) rep(mean(x), length(x)))
+      }
     }
   }
 
