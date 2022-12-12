@@ -3,7 +3,6 @@
 Agent-based metabolic modelling of microbial communities in time and continuous µ-meter-scale space
 
 <!-- badges: start -->
-  [![R-CMD-check](https://github.com/Waschina/Eutropia/workflows/R-CMD-check/badge.svg)](https://github.com/Waschina/Eutropia/actions)
 [![R-CMD-check](https://github.com/Waschina/Eutropia/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Waschina/Eutropia/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
