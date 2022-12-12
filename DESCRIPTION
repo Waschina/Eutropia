@@ -49,7 +49,7 @@ Imports:
     particles,
     tidygraph
 Remotes: 
-    Waschina/particles
+    SysBioChalmers/sybil
 NeedsCompilation: yes
 URL: https://waschina.github.io/Eutropia
 BugReports: https://github.com/Waschina/Eutropia/issues
