@@ -65,12 +65,14 @@
 
 
 
-<script src="Crossfeeding_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
+
+<div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="" class="logo" alt=""><h1>Cross-feeding between two gastrointestinal bacteria</h1>
-                        <h4 data-toc-skip class="author">Silvio Waschina</h4>
+                        <h4 data-toc-skip class="author">Silvio
+Waschina</h4>
             
-            <h4 data-toc-skip class="date">2022-07-31</h4>
+            <h4 data-toc-skip class="date">2022-12-12</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/Waschina/Eutropia/blob/HEAD/vignettes/Crossfeeding.Rmd" class="external-link"><code>vignettes/Crossfeeding.Rmd</code></a></small>
       <div class="d-none name"><code>Crossfeeding.Rmd</code></div>
@@ -86,23 +88,38 @@
 <span><span class="co">#&gt; Loading required package: lattice</span></span>
 <span><span class="co">#&gt; Loading required package: hms</span></span>
 <span><span class="co">#&gt; Loading required package: glpkAPI</span></span>
-<span><span class="co">#&gt; using GLPK version 4.65</span></span>
+<span><span class="co">#&gt; using GLPK version 5.0</span></span>
 <span><span class="co">#&gt; Welcome to Eutropia.</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="background">Background<a class="anchor" aria-label="anchor" href="#background"></a>
 </h2>
-<p>The intestinal bacterium <em>Eubacterium rectale</em> is known to be able to use acetate as energy source under anaerobic conditions and forms butyrate as end product (Rivère et al. (2015) Appl Envrion Microbiol). Acetate is a common fermentation end product in a number of different other intestinal bacteria, including Bifidobacteria (e.g. <em>Bifidobacterium longum</em>). In this tutorial, a co-culture experiment of both species is simulated in an aerobic environment that contains glucose as sole source of carbon and energy. It will be tested if acetate cross-feeding occurs and how the organisms affect each others population growth.</p>
+<p>The intestinal bacterium <em>Eubacterium rectale</em> is known to be
+able to use acetate as energy source under anaerobic conditions and
+forms butyrate as end product (Rivère et al. (2015) Appl Envrion
+Microbiol). Acetate is a common fermentation end product in a number of
+different other intestinal bacteria, including Bifidobacteria
+(e.g. <em>Bifidobacterium longum</em>). In this tutorial, a co-culture
+experiment of both species is simulated in an aerobic environment that
+contains glucose as sole source of carbon and energy. It will be tested
+if acetate cross-feeding occurs and how the organisms affect each others
+population growth.</p>
 </div>
 <div class="section level2">
 <h2 id="the-setup">The setup<a class="anchor" aria-label="anchor" href="#the-setup"></a>
 </h2>
-<p>As growth environment, a Petri dish-shaped growth area will be defined with a radius of 80 micro meters. The space for metabolite concentrations is rasterized by rhombic dodecahedrons of size 1 µm (distance between adjacent field centers). The chemical growth environment consists of 6 field layers in height (i.e. the <em>z</em>-dimension).</p>
+<p>As growth environment, a Petri dish-shaped growth area will be
+defined with a radius of 80 micro meters. The space for metabolite
+concentrations is rasterized by rhombic dodecahedrons of size 1 µm
+(distance between adjacent field centers). The chemical growth
+environment consists of 6 field layers in height (i.e. the
+<em>z</em>-dimension).</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># create simulation environment</span></span>
 <span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/init_simulation.html">init_simulation</a></span><span class="op">(</span><span class="st">"Petri_80"</span>,</span>
 <span>                       gridFieldSize <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>                       gridFieldLayers <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span></code></pre></div>
-<p>Next, we will read the models for both organisms and place 15 cells each in the growth environment.</p>
+<p>Next, we will read the models for both organisms and place 15 cells
+each in the growth environment.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># add organisms (15 cells of each as 'starter culture')</span></span>
 <span><span class="va">models</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -117,12 +134,14 @@
 <span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/add_organism.html">add_organism</a></span><span class="op">(</span><span class="va">sim</span>, model <span class="op">=</span> <span class="va">models</span><span class="op">[[</span><span class="st">'bilo'</span><span class="op">]</span><span class="op">]</span>, name <span class="op">=</span> <span class="st">"B. longum"</span>,</span>
 <span>                    ncells <span class="op">=</span> <span class="fl">15</span>, distribution.radius <span class="op">=</span> <span class="fl">25</span>,</span>
 <span>                    open.bounds <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
-<p>It is not required, but out of curiosity the initial spatial distribution of cells can be plotted.</p>
+<p>It is not required, but out of curiosity the initial spatial
+distribution of cells can be plotted.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_cells.html">plot_cells</a></span><span class="op">(</span><span class="va">sim</span>,</span>
 <span>           scalebar.color <span class="op">=</span> <span class="st">"black"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="Crossfeeding_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
-<p>Now we have a simulation object with cells. Next we will add nutrients to the growth medium.</p>
+<p>Now we have a simulation object with cells. Next we will add
+nutrients to the growth medium.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load a medium table</span></span>
 <span><span class="va">dt_medium</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://Rdatatable.gitlab.io/data.table/reference/fread.html" class="external-link">fread</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"medium.csv"</span>, package<span class="op">=</span><span class="st">"Eutropia"</span><span class="op">)</span><span class="op">)</span></span>
@@ -137,106 +156,97 @@
 <div class="section level2">
 <h2 id="the-simulation">The simulation<a class="anchor" aria-label="anchor" href="#the-simulation"></a>
 </h2>
-<p>We are all set to run our first simulation. It will run either to a maximum of 50 iterations (= 500 minutes simulated time, option <code>niter</code>) or in maximum 4 minutes and 30 seconds (option <code>lim_time</code>). In the latter case, the last iteration is allowed to finish even if the time limit is exceeded.</p>
+<p>We are all set to run our first simulation. It will run either to a
+maximum of 50 iterations (= 500 minutes simulated time, option
+<code>niter</code>) or in maximum 4 minutes and 30 seconds (option
+<code>lim_time</code>). In the latter case, the last iteration is
+allowed to finish even if the time limit is exceeded.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_simulation.html">run_simulation</a></span><span class="op">(</span><span class="va">sim</span>, niter <span class="op">=</span> <span class="fl">50</span>, verbose <span class="op">=</span> <span class="fl">1</span>, lim_time <span class="op">=</span> <span class="fl">4.5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Initalising simulation using 1 CPU cores.</span></span>
 <span><span class="co">#&gt; LP-solver: glpkAPI</span></span>
 <span><span class="co">#&gt; [00:00:00] Simulation round 1    (30 cells, 8.40 pg dBM)</span></span>
 <span><span class="co">#&gt;            E. rectale(4.49) B. longum(4.44)</span></span>
-<span><span class="co">#&gt; [00:00:06] Simulation round 2    (30 cells, 8.93 pg dBM)</span></span>
+<span><span class="co">#&gt; [00:00:07] Simulation round 2    (30 cells, 8.93 pg dBM)</span></span>
 <span><span class="co">#&gt;            E. rectale(4.81) B. longum(4.69)</span></span>
-<span><span class="co">#&gt; [00:00:11] Simulation round 3    (30 cells, 9.50 pg dBM)</span></span>
+<span><span class="co">#&gt; [00:00:13] Simulation round 3    (30 cells, 9.49 pg dBM)</span></span>
 <span><span class="co">#&gt;            E. rectale(5.15) B. longum(4.95)</span></span>
-<span><span class="co">#&gt; [00:00:16] Simulation round 4    (30 cells, 10.10 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(5.53) B. longum(5.23)</span></span>
-<span><span class="co">#&gt; [00:00:21] Simulation round 5    (30 cells, 10.76 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(5.93) B. longum(5.52)</span></span>
-<span><span class="co">#&gt; [00:00:27] Simulation round 6    (30 cells, 11.46 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(6.34) B. longum(5.83)</span></span>
-<span><span class="co">#&gt; [00:00:32] Simulation round 7    (30 cells, 12.17 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(6.74) B. longum(6.14)</span></span>
-<span><span class="co">#&gt; [00:00:37] Simulation round 8    (30 cells, 12.88 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(7.12) B. longum(6.42)</span></span>
-<span><span class="co">#&gt; [00:00:42] Simulation round 9    (30 cells, 13.54 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(7.48) B. longum(6.69)</span></span>
-<span><span class="co">#&gt; [00:00:47] Simulation round 10   (30 cells, 14.17 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(7.81) B. longum(6.95)</span></span>
-<span><span class="co">#&gt; [00:00:52] Simulation round 11   (30 cells, 14.76 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(8.12) B. longum(7.19)</span></span>
-<span><span class="co">#&gt; [00:00:57] Simulation round 12   (33 cells, 15.31 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(8.42) B. longum(7.42)</span></span>
-<span><span class="co">#&gt; [00:01:02] Simulation round 13   (39 cells, 15.84 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(8.78) B. longum(7.63)</span></span>
-<span><span class="co">#&gt; [00:01:08] Simulation round 14   (42 cells, 16.40 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(9.15) B. longum(7.82)</span></span>
-<span><span class="co">#&gt; [00:01:13] Simulation round 15   (44 cells, 16.97 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(9.51) B. longum(8.04)</span></span>
-<span><span class="co">#&gt; [00:01:19] Simulation round 16   (46 cells, 17.54 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(9.85) B. longum(8.26)</span></span>
-<span><span class="co">#&gt; [00:01:24] Simulation round 17   (47 cells, 18.11 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(10.18) B. longum(8.49)</span></span>
-<span><span class="co">#&gt; [00:01:30] Simulation round 18   (49 cells, 18.67 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(10.49) B. longum(8.71)</span></span>
-<span><span class="co">#&gt; [00:01:36] Simulation round 19   (50 cells, 19.20 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(10.78) B. longum(8.93)</span></span>
-<span><span class="co">#&gt; [00:01:42] Simulation round 20   (51 cells, 19.70 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(11.06) B. longum(9.17)</span></span>
-<span><span class="co">#&gt; [00:01:48] Simulation round 21   (51 cells, 20.23 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(11.35) B. longum(9.4)</span></span>
-<span><span class="co">#&gt; [00:01:54] Simulation round 22   (52 cells, 20.74 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(11.61) B. longum(9.62)</span></span>
-<span><span class="co">#&gt; [00:02:00] Simulation round 23   (55 cells, 21.23 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(11.87) B. longum(9.86)</span></span>
-<span><span class="co">#&gt; [00:02:06] Simulation round 24   (55 cells, 21.73 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(12.12) B. longum(10.09)</span></span>
-<span><span class="co">#&gt; [00:02:13] Simulation round 25   (56 cells, 22.22 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(12.36) B. longum(10.33)</span></span>
-<span><span class="co">#&gt; [00:02:19] Simulation round 26   (57 cells, 22.69 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(12.63) B. longum(10.56)</span></span>
-<span><span class="co">#&gt; [00:02:25] Simulation round 27   (58 cells, 23.19 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(12.91) B. longum(10.79)</span></span>
-<span><span class="co">#&gt; [00:02:32] Simulation round 28   (61 cells, 23.70 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(13.18) B. longum(11.04)</span></span>
-<span><span class="co">#&gt; [00:02:38] Simulation round 29   (62 cells, 24.22 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(13.43) B. longum(11.27)</span></span>
-<span><span class="co">#&gt; [00:02:45] Simulation round 30   (64 cells, 24.70 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(13.69) B. longum(11.48)</span></span>
-<span><span class="co">#&gt; [00:02:51] Simulation round 31   (64 cells, 25.17 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(13.93) B. longum(11.72)</span></span>
-<span><span class="co">#&gt; [00:02:58] Simulation round 32   (65 cells, 25.64 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(14.17) B. longum(11.94)</span></span>
-<span><span class="co">#&gt; [00:03:05] Simulation round 33   (68 cells, 26.11 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(14.44) B. longum(12.16)</span></span>
-<span><span class="co">#&gt; [00:03:12] Simulation round 34   (68 cells, 26.60 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(14.7) B. longum(12.38)</span></span>
-<span><span class="co">#&gt; [00:03:18] Simulation round 35   (70 cells, 27.08 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(14.96) B. longum(12.62)</span></span>
-<span><span class="co">#&gt; [00:03:25] Simulation round 36   (70 cells, 27.57 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(15.21) B. longum(12.85)</span></span>
-<span><span class="co">#&gt; [00:03:32] Simulation round 37   (73 cells, 28.06 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(15.48) B. longum(13.11)</span></span>
-<span><span class="co">#&gt; [00:03:39] Simulation round 38   (74 cells, 28.58 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(15.75) B. longum(13.36)</span></span>
-<span><span class="co">#&gt; [00:03:46] Simulation round 39   (76 cells, 29.12 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(16.02) B. longum(13.61)</span></span>
-<span><span class="co">#&gt; [00:03:53] Simulation round 40   (77 cells, 29.63 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(16.28) B. longum(13.83)</span></span>
-<span><span class="co">#&gt; [00:04:00] Simulation round 41   (77 cells, 30.11 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(16.51) B. longum(14.05)</span></span>
-<span><span class="co">#&gt; [00:04:08] Simulation round 42   (78 cells, 30.56 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(16.74) B. longum(14.25)</span></span>
-<span><span class="co">#&gt; [00:04:15] Simulation round 43   (79 cells, 31.00 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(16.98) B. longum(14.46)</span></span>
-<span><span class="co">#&gt; [00:04:22] Simulation round 44   (79 cells, 31.44 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(17.21) B. longum(14.66)</span></span>
-<span><span class="co">#&gt; [00:04:30] Simulation round 45   (82 cells, 31.87 pg dBM)</span></span>
-<span><span class="co">#&gt;            E. rectale(17.46) B. longum(14.85)</span></span></code></pre></div>
+<span><span class="co">#&gt; [00:00:19] Simulation round 4    (30 cells, 10.10 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(5.52) B. longum(5.23)</span></span>
+<span><span class="co">#&gt; [00:00:25] Simulation round 5    (30 cells, 10.75 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(5.91) B. longum(5.52)</span></span>
+<span><span class="co">#&gt; [00:00:30] Simulation round 6    (30 cells, 11.43 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(6.32) B. longum(5.82)</span></span>
+<span><span class="co">#&gt; [00:00:36] Simulation round 7    (30 cells, 12.14 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(6.75) B. longum(6.14)</span></span>
+<span><span class="co">#&gt; [00:00:42] Simulation round 8    (30 cells, 12.89 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(7.19) B. longum(6.48)</span></span>
+<span><span class="co">#&gt; [00:00:48] Simulation round 9    (30 cells, 13.67 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(7.62) B. longum(6.81)</span></span>
+<span><span class="co">#&gt; [00:00:54] Simulation round 10   (30 cells, 14.42 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(8.02) B. longum(7.11)</span></span>
+<span><span class="co">#&gt; [00:00:59] Simulation round 11   (30 cells, 15.13 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(8.4) B. longum(7.4)</span></span>
+<span><span class="co">#&gt; [00:01:05] Simulation round 12   (39 cells, 15.80 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(8.87) B. longum(7.67)</span></span>
+<span><span class="co">#&gt; [00:01:11] Simulation round 13   (42 cells, 16.54 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(9.36) B. longum(7.92)</span></span>
+<span><span class="co">#&gt; [00:01:18] Simulation round 14   (44 cells, 17.27 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(9.81) B. longum(8.15)</span></span>
+<span><span class="co">#&gt; [00:01:24] Simulation round 15   (49 cells, 17.96 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(10.28) B. longum(8.39)</span></span>
+<span><span class="co">#&gt; [00:01:31] Simulation round 16   (53 cells, 18.67 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(10.7) B. longum(8.67)</span></span>
+<span><span class="co">#&gt; [00:01:38] Simulation round 17   (55 cells, 19.37 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(11.11) B. longum(8.95)</span></span>
+<span><span class="co">#&gt; [00:01:45] Simulation round 18   (56 cells, 20.06 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(11.48) B. longum(9.21)</span></span>
+<span><span class="co">#&gt; [00:01:52] Simulation round 19   (56 cells, 20.69 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(11.84) B. longum(9.47)</span></span>
+<span><span class="co">#&gt; [00:02:00] Simulation round 20   (57 cells, 21.30 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(12.17) B. longum(9.71)</span></span>
+<span><span class="co">#&gt; [00:02:07] Simulation round 21   (57 cells, 21.88 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(12.51) B. longum(9.93)</span></span>
+<span><span class="co">#&gt; [00:02:15] Simulation round 22   (57 cells, 22.44 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(12.84) B. longum(10.13)</span></span>
+<span><span class="co">#&gt; [00:02:22] Simulation round 23   (59 cells, 22.97 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(13.15) B. longum(10.32)</span></span>
+<span><span class="co">#&gt; [00:02:29] Simulation round 24   (59 cells, 23.47 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(13.48) B. longum(10.52)</span></span>
+<span><span class="co">#&gt; [00:02:37] Simulation round 25   (60 cells, 24.00 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(13.79) B. longum(10.72)</span></span>
+<span><span class="co">#&gt; [00:02:45] Simulation round 26   (62 cells, 24.51 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(14.09) B. longum(10.91)</span></span>
+<span><span class="co">#&gt; [00:02:52] Simulation round 27   (63 cells, 25.00 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(14.41) B. longum(11.08)</span></span>
+<span><span class="co">#&gt; [00:03:00] Simulation round 28   (63 cells, 25.49 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(14.71) B. longum(11.25)</span></span>
+<span><span class="co">#&gt; [00:03:08] Simulation round 29   (65 cells, 25.96 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(15.01) B. longum(11.39)</span></span>
+<span><span class="co">#&gt; [00:03:16] Simulation round 30   (66 cells, 26.41 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(15.32) B. longum(11.54)</span></span>
+<span><span class="co">#&gt; [00:03:24] Simulation round 31   (68 cells, 26.85 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(15.62) B. longum(11.69)</span></span>
+<span><span class="co">#&gt; [00:03:33] Simulation round 32   (70 cells, 27.32 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(15.93) B. longum(11.87)</span></span>
+<span><span class="co">#&gt; [00:03:41] Simulation round 33   (71 cells, 27.80 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(16.25) B. longum(12.05)</span></span>
+<span><span class="co">#&gt; [00:03:49] Simulation round 34   (71 cells, 28.29 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(16.54) B. longum(12.22)</span></span>
+<span><span class="co">#&gt; [00:03:58] Simulation round 35   (72 cells, 28.76 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(16.84) B. longum(12.38)</span></span>
+<span><span class="co">#&gt; [00:04:06] Simulation round 36   (73 cells, 29.23 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(17.15) B. longum(12.54)</span></span>
+<span><span class="co">#&gt; [00:04:15] Simulation round 37   (76 cells, 29.70 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(17.45) B. longum(12.7)</span></span>
+<span><span class="co">#&gt; [00:04:24] Simulation round 38   (76 cells, 30.15 pg dBM)</span></span>
+<span><span class="co">#&gt;            E. rectale(17.75) B. longum(12.86)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="analyse-the-environment-after-the-simulation">Analyse the environment after the simulation<a class="anchor" aria-label="anchor" href="#analyse-the-environment-after-the-simulation"></a>
 </h2>
-<p>The package comes with a number of functions to plot simulation results.</p>
+<p>The package comes with a number of functions to plot simulation
+results.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Plot spatial distribution of cells</span></span>
 <span><span class="fu"><a href="../reference/plot_cells.html">plot_cells</a></span><span class="op">(</span><span class="va">sim</span>, scalebar.color <span class="op">=</span> <span class="st">"black"</span><span class="op">)</span></span></code></pre></div>
@@ -260,108 +270,112 @@
 <code class="sourceCode R"><span><span class="co"># dynamics in metabolite concentrations (calculated by total environment volume)</span></span>
 <span><span class="fu"><a href="../reference/plot_compounds.html">plot_compounds</a></span><span class="op">(</span><span class="va">sim</span>, compounds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cpd00029_e0"</span>,<span class="st">"cpd00211_e0"</span>,<span class="st">"cpd00159_e0"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="Crossfeeding_files/figure-html/unnamed-chunk-11-1.png" width="480"></p>
-<p>The consumed and produced metabolites (i.e. exchanges) can be retrieved for the simulation.</p>
+<p>The consumed and produced metabolites (i.e. exchanges) can be
+retrieved for the simulation.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary_exchanges.html">summary_exchanges</a></span><span class="op">(</span><span class="va">sim</span><span class="op">)</span></span>
 <span><span class="co">#&gt;           type    compound     compound.name          fmol</span></span>
-<span><span class="co">#&gt;  1: E. rectale cpd00001_e0             Water  1.133697e+01</span></span>
-<span><span class="co">#&gt;  2: E. rectale cpd00009_e0         Phosphate -3.179997e-01</span></span>
-<span><span class="co">#&gt;  3: E. rectale cpd00027_e0         D-Glucose -4.997318e+00</span></span>
-<span><span class="co">#&gt;  4: E. rectale cpd00034_e0              Zn2+ -1.728942e-03</span></span>
-<span><span class="co">#&gt;  5: E. rectale cpd00048_e0           Sulfate -1.728942e-03</span></span>
-<span><span class="co">#&gt;  6: E. rectale cpd00149_e0              Co2+ -1.728942e-03</span></span>
-<span><span class="co">#&gt;  7: E. rectale cpd10516_e0              Fe3+ -1.728942e-03</span></span>
-<span><span class="co">#&gt;  8: E. rectale cpd00067_e0                H+  2.622262e+00</span></span>
-<span><span class="co">#&gt;  9: E. rectale cpd00063_e0              Ca2+ -1.728942e-03</span></span>
-<span><span class="co">#&gt; 10: E. rectale cpd00058_e0              Cu2+ -1.728942e-03</span></span>
-<span><span class="co">#&gt; 11: E. rectale cpd10515_e0              Fe2+ -4.177652e-03</span></span>
-<span><span class="co">#&gt; 12: E. rectale cpd00205_e0                K+ -1.728942e-03</span></span>
-<span><span class="co">#&gt; 13: E. rectale cpd00099_e0               Cl- -1.728942e-03</span></span>
-<span><span class="co">#&gt; 14: E. rectale cpd00013_e0          Ammonium -2.033405e+00</span></span>
-<span><span class="co">#&gt; 15: E. rectale cpd00011_e0               CO2  6.596284e+00</span></span>
-<span><span class="co">#&gt; 16: E. rectale cpd00029_e0           Acetate -4.408496e+00</span></span>
-<span><span class="co">#&gt; 17: E. rectale cpd00363_e0           Ethanol  4.712358e-01</span></span>
-<span><span class="co">#&gt; 18: E. rectale cpd00239_e0               H2S -5.300564e-02</span></span>
-<span><span class="co">#&gt; 19: E. rectale cpd00211_e0          Butyrate  5.449726e+00</span></span>
-<span><span class="co">#&gt; 20: E. rectale cpd00030_e0              Mn2+ -1.728942e-03</span></span>
-<span><span class="co">#&gt; 21: E. rectale cpd00254_e0              Mg2+ -1.728942e-03</span></span>
-<span><span class="co">#&gt; 22: E. rectale cpd00971_e0            Sodium -4.920462e-13</span></span>
-<span><span class="co">#&gt; 23:  B. longum cpd00001_e0             Water  4.884206e+00</span></span>
-<span><span class="co">#&gt; 24:  B. longum cpd00009_e0         Phosphate -2.623475e-01</span></span>
-<span><span class="co">#&gt; 25:  B. longum cpd00030_e0              Mn2+ -1.426365e-03</span></span>
-<span><span class="co">#&gt; 26:  B. longum cpd00048_e0           Sulfate -1.426365e-03</span></span>
-<span><span class="co">#&gt; 27:  B. longum cpd00149_e0              Co2+ -1.426365e-03</span></span>
-<span><span class="co">#&gt; 28:  B. longum cpd00067_e0                H+  1.277516e+01</span></span>
-<span><span class="co">#&gt; 29:  B. longum cpd00027_e0         D-Glucose -5.778875e+00</span></span>
-<span><span class="co">#&gt; 30:  B. longum cpd00013_e0          Ammonium -1.692696e+00</span></span>
-<span><span class="co">#&gt; 31:  B. longum cpd00063_e0              Ca2+ -1.426365e-03</span></span>
-<span><span class="co">#&gt; 32:  B. longum cpd00058_e0              Cu2+ -1.426365e-03</span></span>
-<span><span class="co">#&gt; 33:  B. longum cpd00205_e0                K+ -1.426365e-03</span></span>
-<span><span class="co">#&gt; 34:  B. longum cpd00159_e0         L-Lactate  3.367362e+00</span></span>
-<span><span class="co">#&gt; 35:  B. longum cpd00254_e0              Mg2+ -1.426365e-03</span></span>
-<span><span class="co">#&gt; 36:  B. longum cpd00011_e0               CO2  5.510753e-01</span></span>
-<span><span class="co">#&gt; 37:  B. longum cpd00029_e0           Acetate  8.088311e+00</span></span>
-<span><span class="co">#&gt; 38:  B. longum cpd00363_e0           Ethanol  9.123575e-14</span></span>
-<span><span class="co">#&gt; 39:  B. longum cpd00239_e0               H2S -4.372928e-02</span></span>
-<span><span class="co">#&gt; 40:  B. longum cpd00034_e0              Zn2+ -1.426365e-03</span></span>
-<span><span class="co">#&gt; 41:  B. longum cpd00099_e0               Cl- -1.426365e-03</span></span>
-<span><span class="co">#&gt; 42:  B. longum cpd10515_e0              Fe2+ -3.446534e-03</span></span>
-<span><span class="co">#&gt; 43:  B. longum cpd10516_e0              Fe3+ -1.426365e-03</span></span>
-<span><span class="co">#&gt; 44:  B. longum cpd00229_e0    Glycolaldehyde  3.030253e-03</span></span>
-<span><span class="co">#&gt; 45:  B. longum cpd03091_e0 5'-Deoxyadenosine  3.030253e-03</span></span>
+<span><span class="co">#&gt;  1: E. rectale cpd00001_e0             Water  1.384493e+01</span></span>
+<span><span class="co">#&gt;  2: E. rectale cpd00009_e0         Phosphate -4.029156e-01</span></span>
+<span><span class="co">#&gt;  3: E. rectale cpd00027_e0         D-Glucose -6.553119e+00</span></span>
+<span><span class="co">#&gt;  4: E. rectale cpd00034_e0              Zn2+ -2.190624e-03</span></span>
+<span><span class="co">#&gt;  5: E. rectale cpd00048_e0           Sulfate -2.190624e-03</span></span>
+<span><span class="co">#&gt;  6: E. rectale cpd00149_e0              Co2+ -2.190624e-03</span></span>
+<span><span class="co">#&gt;  7: E. rectale cpd10516_e0              Fe3+ -2.190624e-03</span></span>
+<span><span class="co">#&gt;  8: E. rectale cpd00067_e0                H+  4.284573e+00</span></span>
+<span><span class="co">#&gt;  9: E. rectale cpd00063_e0              Ca2+ -2.190624e-03</span></span>
+<span><span class="co">#&gt; 10: E. rectale cpd00058_e0              Cu2+ -2.190624e-03</span></span>
+<span><span class="co">#&gt; 11: E. rectale cpd10515_e0              Fe2+ -5.293216e-03</span></span>
+<span><span class="co">#&gt; 12: E. rectale cpd00205_e0                K+ -2.190624e-03</span></span>
+<span><span class="co">#&gt; 13: E. rectale cpd00099_e0               Cl- -2.190624e-03</span></span>
+<span><span class="co">#&gt; 14: E. rectale cpd00013_e0          Ammonium -2.576388e+00</span></span>
+<span><span class="co">#&gt; 15: E. rectale cpd00011_e0               CO2  8.159031e+00</span></span>
+<span><span class="co">#&gt; 16: E. rectale cpd00029_e0           Acetate -4.104254e+00</span></span>
+<span><span class="co">#&gt; 17: E. rectale cpd00363_e0           Ethanol  9.177655e-01</span></span>
+<span><span class="co">#&gt; 18: E. rectale cpd00239_e0               H2S -6.715980e-02</span></span>
+<span><span class="co">#&gt; 19: E. rectale cpd00211_e0          Butyrate  6.385611e+00</span></span>
+<span><span class="co">#&gt; 20: E. rectale cpd00030_e0              Mn2+ -2.190624e-03</span></span>
+<span><span class="co">#&gt; 21: E. rectale cpd00254_e0              Mg2+ -2.190624e-03</span></span>
+<span><span class="co">#&gt; 22: E. rectale cpd00281_e0              GABA -1.396210e-15</span></span>
+<span><span class="co">#&gt; 23: E. rectale cpd00971_e0            Sodium -2.650705e-13</span></span>
+<span><span class="co">#&gt; 24:  B. longum cpd00001_e0             Water  3.986505e+00</span></span>
+<span><span class="co">#&gt; 25:  B. longum cpd00009_e0         Phosphate -2.141289e-01</span></span>
+<span><span class="co">#&gt; 26:  B. longum cpd00030_e0              Mn2+ -1.164204e-03</span></span>
+<span><span class="co">#&gt; 27:  B. longum cpd00048_e0           Sulfate -1.164204e-03</span></span>
+<span><span class="co">#&gt; 28:  B. longum cpd00149_e0              Co2+ -1.164204e-03</span></span>
+<span><span class="co">#&gt; 29:  B. longum cpd00067_e0                H+  1.042713e+01</span></span>
+<span><span class="co">#&gt; 30:  B. longum cpd00027_e0         D-Glucose -4.716736e+00</span></span>
+<span><span class="co">#&gt; 31:  B. longum cpd00013_e0          Ammonium -1.381584e+00</span></span>
+<span><span class="co">#&gt; 32:  B. longum cpd00063_e0              Ca2+ -1.164204e-03</span></span>
+<span><span class="co">#&gt; 33:  B. longum cpd00058_e0              Cu2+ -1.164204e-03</span></span>
+<span><span class="co">#&gt; 34:  B. longum cpd00281_e0              GABA -1.040066e-16</span></span>
+<span><span class="co">#&gt; 35:  B. longum cpd00205_e0                K+ -1.164204e-03</span></span>
+<span><span class="co">#&gt; 36:  B. longum cpd00159_e0         L-Lactate  2.748452e+00</span></span>
+<span><span class="co">#&gt; 37:  B. longum cpd00254_e0              Mg2+ -1.164204e-03</span></span>
+<span><span class="co">#&gt; 38:  B. longum cpd00011_e0               CO2  4.497894e-01</span></span>
+<span><span class="co">#&gt; 39:  B. longum cpd00029_e0           Acetate  6.601705e+00</span></span>
+<span><span class="co">#&gt; 40:  B. longum cpd00363_e0           Ethanol  4.318896e-14</span></span>
+<span><span class="co">#&gt; 41:  B. longum cpd00239_e0               H2S -3.569198e-02</span></span>
+<span><span class="co">#&gt; 42:  B. longum cpd00034_e0              Zn2+ -1.164204e-03</span></span>
+<span><span class="co">#&gt; 43:  B. longum cpd00099_e0               Cl- -1.164204e-03</span></span>
+<span><span class="co">#&gt; 44:  B. longum cpd10515_e0              Fe2+ -2.813072e-03</span></span>
+<span><span class="co">#&gt; 45:  B. longum cpd10516_e0              Fe3+ -1.164204e-03</span></span>
+<span><span class="co">#&gt; 46:  B. longum cpd00229_e0    Glycolaldehyde  2.473302e-03</span></span>
+<span><span class="co">#&gt; 47:  B. longum cpd03091_e0 5'-Deoxyadenosine  2.473302e-03</span></span>
 <span><span class="co">#&gt;           type    compound     compound.name          fmol</span></span></code></pre></div>
-<p>In addition, the same information can be retrieved for earlier iterations in the simulation.</p>
+<p>In addition, the same information can be retrieved for earlier
+iterations in the simulation.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary_exchanges.html">summary_exchanges</a></span><span class="op">(</span><span class="va">sim</span>, iter <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="co">#&gt;           type    compound     compound.name          fmol</span></span>
-<span><span class="co">#&gt;  1: E. rectale cpd00001_e0             Water  1.626748e+01</span></span>
-<span><span class="co">#&gt;  2: E. rectale cpd00009_e0         Phosphate -4.797007e-01</span></span>
-<span><span class="co">#&gt;  3: E. rectale cpd00027_e0         D-Glucose -7.868351e+00</span></span>
-<span><span class="co">#&gt;  4: E. rectale cpd00034_e0              Zn2+ -2.608099e-03</span></span>
-<span><span class="co">#&gt;  5: E. rectale cpd00048_e0           Sulfate -2.608099e-03</span></span>
-<span><span class="co">#&gt;  6: E. rectale cpd00149_e0              Co2+ -2.608099e-03</span></span>
-<span><span class="co">#&gt;  7: E. rectale cpd10516_e0              Fe3+ -2.608099e-03</span></span>
-<span><span class="co">#&gt;  8: E. rectale cpd00067_e0                H+  5.449794e+00</span></span>
-<span><span class="co">#&gt;  9: E. rectale cpd00971_e0            Sodium  2.817564e-13</span></span>
-<span><span class="co">#&gt; 10: E. rectale cpd00063_e0              Ca2+ -2.608099e-03</span></span>
-<span><span class="co">#&gt; 11: E. rectale cpd00058_e0              Cu2+ -2.608099e-03</span></span>
-<span><span class="co">#&gt; 12: E. rectale cpd10515_e0              Fe2+ -6.301964e-03</span></span>
-<span><span class="co">#&gt; 13: E. rectale cpd00205_e0                K+ -2.608099e-03</span></span>
-<span><span class="co">#&gt; 14: E. rectale cpd00099_e0               Cl- -2.608099e-03</span></span>
-<span><span class="co">#&gt; 15: E. rectale cpd00013_e0          Ammonium -3.067380e+00</span></span>
-<span><span class="co">#&gt; 16: E. rectale cpd00011_e0               CO2  9.614223e+00</span></span>
-<span><span class="co">#&gt; 17: E. rectale cpd00029_e0           Acetate -4.321786e+00</span></span>
-<span><span class="co">#&gt; 18: E. rectale cpd00363_e0           Ethanol  1.208899e+00</span></span>
-<span><span class="co">#&gt; 19: E. rectale cpd00239_e0               H2S -7.995870e-02</span></span>
-<span><span class="co">#&gt; 20: E. rectale cpd00211_e0          Butyrate  7.386605e+00</span></span>
-<span><span class="co">#&gt; 21: E. rectale cpd00030_e0              Mn2+ -2.608099e-03</span></span>
-<span><span class="co">#&gt; 22: E. rectale cpd00254_e0              Mg2+ -2.608099e-03</span></span>
-<span><span class="co">#&gt; 23:  B. longum cpd00001_e0             Water  6.738535e+00</span></span>
-<span><span class="co">#&gt; 24:  B. longum cpd00009_e0         Phosphate -3.619499e-01</span></span>
-<span><span class="co">#&gt; 25:  B. longum cpd00030_e0              Mn2+ -1.967896e-03</span></span>
-<span><span class="co">#&gt; 26:  B. longum cpd00048_e0           Sulfate -1.967896e-03</span></span>
-<span><span class="co">#&gt; 27:  B. longum cpd00149_e0              Co2+ -1.967896e-03</span></span>
-<span><span class="co">#&gt; 28:  B. longum cpd00067_e0                H+  1.762536e+01</span></span>
-<span><span class="co">#&gt; 29:  B. longum cpd00027_e0         D-Glucose -7.972872e+00</span></span>
-<span><span class="co">#&gt; 30:  B. longum cpd00013_e0          Ammonium -2.335342e+00</span></span>
-<span><span class="co">#&gt; 31:  B. longum cpd00063_e0              Ca2+ -1.967896e-03</span></span>
-<span><span class="co">#&gt; 32:  B. longum cpd00058_e0              Cu2+ -1.967896e-03</span></span>
-<span><span class="co">#&gt; 33:  B. longum cpd00205_e0                K+ -1.967896e-03</span></span>
-<span><span class="co">#&gt; 34:  B. longum cpd00159_e0         L-Lactate  4.645809e+00</span></span>
-<span><span class="co">#&gt; 35:  B. longum cpd00254_e0              Mg2+ -1.967896e-03</span></span>
-<span><span class="co">#&gt; 36:  B. longum cpd00011_e0               CO2  7.602956e-01</span></span>
-<span><span class="co">#&gt; 37:  B. longum cpd00029_e0           Acetate  1.115910e+01</span></span>
-<span><span class="co">#&gt; 38:  B. longum cpd00363_e0           Ethanol  4.881770e-14</span></span>
-<span><span class="co">#&gt; 39:  B. longum cpd00239_e0               H2S -6.033146e-02</span></span>
-<span><span class="co">#&gt; 40:  B. longum cpd00034_e0              Zn2+ -1.967896e-03</span></span>
-<span><span class="co">#&gt; 41:  B. longum cpd00099_e0               Cl- -1.967896e-03</span></span>
-<span><span class="co">#&gt; 42:  B. longum cpd10515_e0              Fe2+ -4.755038e-03</span></span>
-<span><span class="co">#&gt; 43:  B. longum cpd10516_e0              Fe3+ -1.967896e-03</span></span>
-<span><span class="co">#&gt; 44:  B. longum cpd00229_e0    Glycolaldehyde  4.180713e-03</span></span>
-<span><span class="co">#&gt; 45:  B. longum cpd03091_e0 5'-Deoxyadenosine  4.180713e-03</span></span>
-<span><span class="co">#&gt; 46:  B. longum cpd00211_e0          Butyrate -1.871762e-15</span></span>
+<span><span class="co">#&gt;  1: E. rectale cpd00001_e0             Water  1.893188e+01</span></span>
+<span><span class="co">#&gt;  2: E. rectale cpd00009_e0         Phosphate -5.699414e-01</span></span>
+<span><span class="co">#&gt;  3: E. rectale cpd00027_e0         D-Glucose -9.536801e+00</span></span>
+<span><span class="co">#&gt;  4: E. rectale cpd00034_e0              Zn2+ -3.098732e-03</span></span>
+<span><span class="co">#&gt;  5: E. rectale cpd00048_e0           Sulfate -3.098732e-03</span></span>
+<span><span class="co">#&gt;  6: E. rectale cpd00149_e0              Co2+ -3.098732e-03</span></span>
+<span><span class="co">#&gt;  7: E. rectale cpd10516_e0              Fe3+ -3.098732e-03</span></span>
+<span><span class="co">#&gt;  8: E. rectale cpd00067_e0                H+  7.247351e+00</span></span>
+<span><span class="co">#&gt;  9: E. rectale cpd00971_e0            Sodium  1.381154e-13</span></span>
+<span><span class="co">#&gt; 10: E. rectale cpd00063_e0              Ca2+ -3.098732e-03</span></span>
+<span><span class="co">#&gt; 11: E. rectale cpd00058_e0              Cu2+ -3.098732e-03</span></span>
+<span><span class="co">#&gt; 12: E. rectale cpd10515_e0              Fe2+ -7.487482e-03</span></span>
+<span><span class="co">#&gt; 13: E. rectale cpd00205_e0                K+ -3.098732e-03</span></span>
+<span><span class="co">#&gt; 14: E. rectale cpd00099_e0               Cl- -3.098732e-03</span></span>
+<span><span class="co">#&gt; 15: E. rectale cpd00013_e0          Ammonium -3.644412e+00</span></span>
+<span><span class="co">#&gt; 16: E. rectale cpd00011_e0               CO2  1.128447e+01</span></span>
+<span><span class="co">#&gt; 17: E. rectale cpd00029_e0           Acetate -3.966630e+00</span></span>
+<span><span class="co">#&gt; 18: E. rectale cpd00363_e0           Ethanol  1.693765e+00</span></span>
+<span><span class="co">#&gt; 19: E. rectale cpd00239_e0               H2S -9.500043e-02</span></span>
+<span><span class="co">#&gt; 20: E. rectale cpd00211_e0          Butyrate  8.380347e+00</span></span>
+<span><span class="co">#&gt; 21: E. rectale cpd00030_e0              Mn2+ -3.098732e-03</span></span>
+<span><span class="co">#&gt; 22: E. rectale cpd00254_e0              Mg2+ -3.098732e-03</span></span>
+<span><span class="co">#&gt; 23:  B. longum cpd00001_e0             Water  8.220163e+00</span></span>
+<span><span class="co">#&gt; 24:  B. longum cpd00009_e0         Phosphate -4.415332e-01</span></span>
+<span><span class="co">#&gt; 25:  B. longum cpd00030_e0              Mn2+ -2.400585e-03</span></span>
+<span><span class="co">#&gt; 26:  B. longum cpd00048_e0           Sulfate -2.400585e-03</span></span>
+<span><span class="co">#&gt; 27:  B. longum cpd00149_e0              Co2+ -2.400585e-03</span></span>
+<span><span class="co">#&gt; 28:  B. longum cpd00067_e0                H+  2.150072e+01</span></span>
+<span><span class="co">#&gt; 29:  B. longum cpd00027_e0         D-Glucose -9.725898e+00</span></span>
+<span><span class="co">#&gt; 30:  B. longum cpd00013_e0          Ammonium -2.848823e+00</span></span>
+<span><span class="co">#&gt; 31:  B. longum cpd00063_e0              Ca2+ -2.400585e-03</span></span>
+<span><span class="co">#&gt; 32:  B. longum cpd00058_e0              Cu2+ -2.400585e-03</span></span>
+<span><span class="co">#&gt; 33:  B. longum cpd00205_e0                K+ -2.400585e-03</span></span>
+<span><span class="co">#&gt; 34:  B. longum cpd00159_e0         L-Lactate  5.667301e+00</span></span>
+<span><span class="co">#&gt; 35:  B. longum cpd00254_e0              Mg2+ -2.400585e-03</span></span>
+<span><span class="co">#&gt; 36:  B. longum cpd00011_e0               CO2  9.274647e-01</span></span>
+<span><span class="co">#&gt; 37:  B. longum cpd00029_e0           Acetate  1.361270e+01</span></span>
+<span><span class="co">#&gt; 38:  B. longum cpd00363_e0           Ethanol  8.154001e-15</span></span>
+<span><span class="co">#&gt; 39:  B. longum cpd00239_e0               H2S -7.359677e-02</span></span>
+<span><span class="co">#&gt; 40:  B. longum cpd00034_e0              Zn2+ -2.400585e-03</span></span>
+<span><span class="co">#&gt; 41:  B. longum cpd00099_e0               Cl- -2.400585e-03</span></span>
+<span><span class="co">#&gt; 42:  B. longum cpd10515_e0              Fe2+ -5.800547e-03</span></span>
+<span><span class="co">#&gt; 43:  B. longum cpd10516_e0              Fe3+ -2.400585e-03</span></span>
+<span><span class="co">#&gt; 44:  B. longum cpd00229_e0    Glycolaldehyde  5.099942e-03</span></span>
+<span><span class="co">#&gt; 45:  B. longum cpd03091_e0 5'-Deoxyadenosine  5.099942e-03</span></span>
 <span><span class="co">#&gt;           type    compound     compound.name          fmol</span></span></code></pre></div>
-<p>The results should clearly show that acetate is produced by <em>B. longum</em> and consumed by <em>E. rectale</em>.</p>
+<p>The results should clearly show that acetate is produced by <em>B.
+longum</em> and consumed by <em>E. rectale</em>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>
